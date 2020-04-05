@@ -1,8 +1,9 @@
 use gdnative::*;
+use legion::prelude::*;
 
 /// The HelloWorld "class"
 #[derive(NativeClass)]
-#[inherit(Node)]
+#[inherit(Spatial)]
 pub struct RPopsInstance;
 
 // __One__ `impl` block can have the `#[methods]` attribute, which will generate
@@ -11,7 +12,7 @@ pub struct RPopsInstance;
 impl RPopsInstance {
     
     /// The "constructor" of the class.
-    fn _init(_owner: Node) -> Self {
+    fn _init(_owner: Spatial) -> Self {
         RPopsInstance
     }
     
@@ -20,10 +21,18 @@ impl RPopsInstance {
     // Instead they are"attached" to the parent object, called the "owner".
     // The owner is passed to every single exposed method.
     #[export]
-    fn _ready(&self, _owner: Node) {
-        // The `godot_print!` macro works like `println!` but prints to the Godot-editor
-        // output tab as well.
-        godot_print!("hello, world.");
+    fn _ready(&mut self, _owner: Spatial) {
+    
+    }
+
+    #[export]
+    fn _physics_process(&mut self, mut owner: Spatial, delta: f64) {
+    
+    }
+
+    #[export]
+    fn _input(&mut self, mut owner: Spatial, event: Option<InputEvent>) {
+    
     }
 }
 
