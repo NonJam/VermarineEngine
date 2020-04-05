@@ -1,5 +1,6 @@
 [workspace]
 exclude = [
+    "./legion-ecs",
 ]
 members = [
     "rpops-core",
