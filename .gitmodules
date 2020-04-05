@@ -1,0 +1,3 @@
+[submodule "Rust/legion-ecs"]
+	path = Rust/legion-ecs
+	url = https://github.com/TomGillen/legion
