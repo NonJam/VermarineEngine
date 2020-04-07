@@ -1,18 +1,11 @@
 use gdnative::*;
 use legion::prelude::*;
-use legion::prelude::World as LWorld;
+use rpops_core::prelude::*;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GDSpatial;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Position {
-    x: i32,
-    y: i32,
-}
-
-/// The HelloWorld "class"
 #[derive(NativeClass)]
 #[inherit(Spatial)]
 pub struct RPopsInstance {
@@ -35,21 +28,12 @@ impl RPopsInstance {
         let universe = Universe::new();
         let mut world = universe.create_world();
         let resources = Resources::default();
-
-        let executor = Executor::new(vec![
-            SystemBuilder::<()>::new("MoverSystem")
-                .with_query(<(Write<Position>)>::query())
-                .build(move |commands, world, resource, queries| {
-                    for (entity, (mut pos)) in queries.iter_entities_mut(&mut *world) {
-                        pos.x+=1;
-                        if pos.x > 100 {
-                            // Both of these succesefully remove the node from Godot
-                            commands.delete(entity);
-                            //commands.remove_component::<GDSpatial>(entity);
-                        }
-                    }
-                }),
-        ]);
+        
+        let mut systems = vec![];
+        systems.append(
+            &mut CreateSystems()
+        );
+        let executor = Executor::new(systems);
 
         let (sender, receiver) = crossbeam_channel::unbounded();
         world.subscribe(sender, any());
@@ -94,7 +78,7 @@ impl RPopsInstance {
                         if let Some(spatial) = self.spatials.get_mut(&e) {
                             unsafe { spatial.free() };
                             self.spatials.remove(&e);
-                            godot_print!("Removed entity {:?}", e.index())
+                            godot_print!("Stopped syncing from entity: {:?} to node", e.index())
                         }
                     }
                 },
@@ -113,7 +97,7 @@ impl RPopsInstance {
                                 owner.add_child(Some(instance.to_node()), true);
                                 self.spatials.insert(e, instance);
                             }
-                            godot_print!("Added entity {:?}", e.index());
+                            godot_print!("Started syncing from entity: {:?} to node", e.index());
                         }
                     }
                 },
