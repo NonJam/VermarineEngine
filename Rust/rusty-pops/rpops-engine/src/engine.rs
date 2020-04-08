@@ -24,7 +24,8 @@ pub fn load_scene(scene_path: &str) -> Template {
     }
 }
 
-pub struct RPopsEngine {
+pub struct RPopsEngine<T> 
+    where T: Eq + std::hash::Hash + 'static {
     pub universe: Universe,
     pub world: LWorld,
     pub resources: Resources,
@@ -32,17 +33,15 @@ pub struct RPopsEngine {
 
     pub event_receiver: crossbeam_channel::Receiver<legion::event::Event>,
     pub spatials: HashMap<Entity, Spatial>,
+    phantom: std::marker::PhantomData<T>,
 }
 
-impl RPopsEngine {
+impl<T> RPopsEngine<T> 
+    where T: Eq + std::hash::Hash {
     pub fn new(_owner: Spatial) -> Self {
         let universe = Universe::new();
-        let mut world = universe.create_world();
-        
-        let mut resources = Resources::default();
-        let models = Models::<Model>::default();
-        resources.insert(add_models(models));
-        
+        let mut world = universe.create_world();        
+        let resources = Resources::default();
         let executor = Executor::new(vec![]);
 
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -55,6 +54,7 @@ impl RPopsEngine {
             executor,
             event_receiver: receiver,
             spatials: HashMap::new(),
+            phantom: std::marker::PhantomData,
         }
     }
 
@@ -82,7 +82,7 @@ impl RPopsEngine {
                         // Add to hashmap if not already in there
                         if !self.spatials.contains_key(&e) {
                             if let Some(renderable) = self.world.get_component::<Renderable>(e) {
-                                if let Some(models) = self.resources.get::<Models<Model>>() {
+                                if let Some(models) = self.resources.get::<Models<T>>() {
                                     if let Some(Template::Scene(packed_scene)) = (*models).get_model(renderable.model) {
                                         unsafe {
                                             let mut instance = packed_scene.instance(0).unwrap().cast::<Spatial>().unwrap();

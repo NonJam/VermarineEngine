@@ -3,14 +3,21 @@ use crate::prelude::*;
 #[derive(NativeClass)]
 #[inherit(Spatial)]
 pub struct RPopsInstance {
-    engine: RPopsEngine,
+    engine: RPopsEngine<Model>,
 }
 
 #[methods]
 impl RPopsInstance {
     fn _init(owner: Spatial) -> Self {
-        let mut instance = RPopsInstance { engine: RPopsEngine::new(owner) };
+        let mut instance = RPopsInstance { engine: RPopsEngine::<Model>::new(owner) };
+        
+        // Add systems
         instance.engine.set_systems(create_systems());
+        
+        // Add resources
+        let models = Models::<Model>::default();
+        instance.engine.resources.insert(add_models(models));
+        
         instance
     }
 
