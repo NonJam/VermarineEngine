@@ -1,5 +1,5 @@
 [package]
-name = "rpops-core"
+name = "rpops-shared"
 version = "0.1.0"
 authors = ["supbscripter, cdrch"]
 edition = "2018"
@@ -8,5 +8,3 @@ edition = "2018"
 
 [dependencies]
 gdnative = "0.8"
-legion = { path = "../../legion-ecs" }
-rpops-shared = { path = "../rpops-shared" }

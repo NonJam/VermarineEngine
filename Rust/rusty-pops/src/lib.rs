@@ -3,6 +3,49 @@ use legion::prelude::*;
 use rpops_core::prelude::*;
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum Model {
+    Creatures(CreatureModels),
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum CreatureModels { 
+    Slime,
+    Zombie,
+}
+
+pub fn try_load_scene(scene_path: &str) -> Result<Template, String> {
+    if let Some(scene) = ResourceLoader::godot_singleton().load(
+        GodotString::from_str(format!("res://Scenes/{}.tscn", scene_path)),
+        GodotString::from_str("PackedScene"),
+        false,
+    ) {
+        if let Some(scene) = scene.cast::<PackedScene>() {
+            return Ok(Template::Scene(scene));
+        } else {
+            return Err(format!("Could not cast {} to PackedScene", scene_path));
+        }
+    } else {
+        return Err(format!("Could not find {}", scene_path));
+    }
+}
+
+pub fn load_scene(scene_path: &str) -> Template {
+    match try_load_scene(scene_path) {
+        Err(e) => panic!(e),
+        Ok(template) => template,
+    }
+}
+
+fn add_models(mut models: Models<Model>) -> Models<Model> {
+    use CreatureModels::*;
+
+    models.insert(None, Some(Model::Creatures(Slime)), load_scene("Square"));
+    models.insert(None, Some(Model::Creatures(Zombie)), load_scene("Rectangle"));
+
+    models
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GDSpatial;
 
@@ -27,11 +70,14 @@ impl RPopsInstance {
     fn _init(_owner: Spatial) -> Self {
         let universe = Universe::new();
         let mut world = universe.create_world();
-        let resources = Resources::default();
+        
+        let mut resources = Resources::default();
+        let models = Models::<Model>::default();
+        resources.insert(add_models(models));
         
         let mut systems = vec![];
         systems.append(
-            &mut CreateSystems()
+            &mut create_systems()
         );
         let executor = Executor::new(systems);
 
@@ -54,9 +100,19 @@ impl RPopsInstance {
     // The owner is passed to every single exposed method.
     #[export]
     fn _ready(&mut self, _owner: Spatial) {
+        use CreatureModels::*;
+        let models = self.resources.get::<Models<Model>>().unwrap();
+        let slime_model_index = models.index_from_t(&Model::Creatures(Slime)).unwrap();
+        let zombie_model_index = models.index_from_t(&Model::Creatures(Zombie)).unwrap();
+
         self.world.insert(
             (), 
-            (0..1).map(|_| (GDSpatial, Position { x: 0, y: 0 }, ))
+            (0..1).map(|_| (Renderable { model: slime_model_index }, GDSpatial, Position { x: 0, y: 0 }, ))
+        );
+
+        self.world.insert(
+            (), 
+            (0..1).map(|_| (Renderable { model: zombie_model_index }, GDSpatial, Position { x: -10, y: 0 }, ))
         );
 
         self.world.insert(
@@ -66,7 +122,7 @@ impl RPopsInstance {
     }
 
     #[export]
-    fn _physics_process(&mut self, mut owner: Spatial, delta: f64) {
+    fn _physics_process(&mut self, mut owner: Spatial, _delta: f64) {
         self.executor.execute(&mut self.world, &mut self.resources);
 
         // Add and remove entities from hashmap
@@ -86,16 +142,17 @@ impl RPopsInstance {
                     if let Some(_) = self.world.get_component::<GDSpatial>(e) {
                         // Add to hashmap if not already in there
                         if !self.spatials.contains_key(&e) {
-                            let scene = ResourceLoader::godot_singleton()
-                            .load(GodotString::from_str("Scenes/Square.tscn"), GodotString::from_str("PackedScene"), false)
-                            .unwrap()
-                            .cast::<PackedScene>()
-                            .unwrap();
-                            unsafe {
-                                let mut instance = scene.instance(0).unwrap().cast::<Spatial>().unwrap();
-                                instance.set_name(GodotString::from_str("Node"));
-                                owner.add_child(Some(instance.to_node()), true);
-                                self.spatials.insert(e, instance);
+                            if let Some(renderable) = self.world.get_component::<Renderable>(e) {
+                                if let Some(models) = self.resources.get::<Models<Model>>() {
+                                    if let Some(Template::Scene(packed_scene)) = (*models).get_model(renderable.model) {
+                                        unsafe {
+                                            let mut instance = packed_scene.instance(0).unwrap().cast::<Spatial>().unwrap();
+                                            instance.set_name(GodotString::from_str("Node"));
+                                            owner.add_child(Some(instance.to_node()), true);
+                                            self.spatials.insert(e, instance);
+                                        }
+                                    }
+                                }
                             }
                             godot_print!("Started syncing from entity: {:?} to node", e.index());
                         }
@@ -119,7 +176,7 @@ impl RPopsInstance {
     }
 
     #[export]
-    fn _input(&mut self, mut owner: Spatial, event: Option<InputEvent>) {
+    fn _input(&mut self, _owner: Spatial, _event: Option<InputEvent>) {
     
     }
 }

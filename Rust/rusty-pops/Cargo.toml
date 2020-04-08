@@ -10,11 +10,13 @@ crossbeam-channel = "0.4.0"
 gdnative = "0.8"
 legion = { path = "../legion-ecs" }
 rpops-core = { path = "./rpops-core" }
+rpops-shared = { path = "./rpops-shared" }
 
 [lib]
 crate-type = ["cdylib"]
 
 [workspace]
 members = [
-    "rpops-core"
+    "rpops-core",
+    "rpops-shared",
 ]

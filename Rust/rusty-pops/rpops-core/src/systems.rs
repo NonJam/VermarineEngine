@@ -1,16 +1,16 @@
 use crate::prelude::*;
 
-pub fn CreateSystems() -> Vec<Box<dyn Schedulable>> {
+pub fn create_systems() -> Vec<Box<dyn Schedulable>> {
     vec![
-        CreateTestSystem(),
+        create_test_system(),
     ]
 }
 
-pub(crate) fn CreateTestSystem() -> Box<dyn Schedulable> {
+pub(crate) fn create_test_system() -> Box<dyn Schedulable> {
     SystemBuilder::<()>::new("TestSystem")
-        .with_query(<(Write<Position>)>::query())
-        .build(move |commands, world, resource, queries| {
-            for (entity, (mut pos)) in queries.iter_entities_mut(&mut *world) {
+        .with_query(<Write<Position>>::query())
+        .build(move |commands, world, _resource, queries| {
+            for (entity, mut pos) in queries.iter_entities_mut(&mut *world) {
                 pos.x+=1;
                 if pos.x > 100 {
                     commands.delete(entity);
