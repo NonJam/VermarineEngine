@@ -1,15 +1,12 @@
 mod systems;
 mod components;
+mod rpops_instance;
 
-pub use crate::systems::*;
-pub use crate::components::*;
-pub use rpops_shared::prelude::*;
+pub use crate::prelude::*;
 
 pub mod prelude {
     pub use crate::systems::*;
     pub use crate::components::*;
-    pub use gdnative::*;
-    pub use legion::prelude::*;
-    pub use legion::prelude::World as LWorld;
-    pub use rpops_shared::prelude::*;
+    pub use crate::rpops_instance::*;
+    pub use rpops_engine::prelude::*;
 }

@@ -8,3 +8,6 @@ pub struct Position {
 pub struct Renderable {
     pub model: usize,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GDSpatial;
