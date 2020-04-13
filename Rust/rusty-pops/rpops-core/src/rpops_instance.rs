@@ -1,14 +1,14 @@
 use crate::prelude::*;
 
 #[derive(NativeClass)]
-#[inherit(Spatial)]
+#[inherit(Node)]
 pub struct RPopsInstance {
     engine: RPopsEngine<Model>,
 }
 
 #[methods]
 impl RPopsInstance {
-    fn _init(owner: Spatial) -> Self {
+    fn _init(owner: Node) -> Self {
         let mut instance = RPopsInstance { engine: RPopsEngine::<Model>::new(owner) };
         
         // Add systems
@@ -22,7 +22,7 @@ impl RPopsInstance {
     }
 
     #[export]
-    fn _ready(&mut self, _owner: Spatial) {
+    fn _ready(&mut self, _owner: Node) {
         // Call engine _ready
         self.engine._ready(_owner);
 
@@ -48,7 +48,7 @@ impl RPopsInstance {
     }
 
     #[export]
-    fn _physics_process(&mut self, owner: Spatial, delta: f64) {
+    fn _physics_process(&mut self, owner: Node, delta: f64) {
         self.engine._physics_process(owner, delta);
     }
 }

@@ -24,21 +24,22 @@ pub fn load_scene(scene_path: &str) -> Template {
     }
 }
 
-pub struct RPopsEngine<T> 
-    where T: Eq + std::hash::Hash + 'static {
+pub struct RPopsEngine<T> where 
+    T: Eq + std::hash::Hash + 'static {
     pub universe: Universe,
     pub world: LWorld,
     pub resources: Resources,
     pub executor: Executor,
 
     pub event_receiver: crossbeam_channel::Receiver<legion::event::Event>,
-    pub spatials: HashMap<Entity, Spatial>,
+    pub spatials: HashMap<Entity, Node>,
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> RPopsEngine<T> 
-    where T: Eq + std::hash::Hash {
-    pub fn new(_owner: Spatial) -> Self {
+    where 
+    T: Eq + std::hash::Hash {
+    pub fn new(_owner: Node) -> Self {
         let universe = Universe::new();
         let mut world = universe.create_world();        
         let resources = Resources::default();
@@ -58,10 +59,10 @@ impl<T> RPopsEngine<T>
         }
     }
 
-    pub fn _ready(&mut self, _owner: Spatial) {
+    pub fn _ready(&mut self, _owner: Node) {
     }
 
-    pub fn _physics_process(&mut self, mut owner: Spatial, _delta: f64) {
+    pub fn _physics_process(&mut self, mut owner: Node, _delta: f64) {
         self.executor.execute(&mut self.world, &mut self.resources);
 
         // Add and remove entities from hashmap
@@ -70,8 +71,8 @@ impl<T> RPopsEngine<T>
                 legion::event::Event::EntityRemoved(e, _) => { 
                     if let None = self.world.get_component::<GDSpatial>(e) {
                         // Remove from hashmap
-                        if let Some(spatial) = self.spatials.get_mut(&e) {
-                            unsafe { spatial.free() };
+                        if let Some(node) = self.spatials.get_mut(&e) {
+                            unsafe { node.free() };
                             self.spatials.remove(&e);
                             godot_print!("Stopped syncing from entity: {:?} to node", e.index())
                         }
@@ -85,15 +86,15 @@ impl<T> RPopsEngine<T>
                                 if let Some(models) = self.resources.get::<Models<T>>() {
                                     if let Some(Template::Scene(packed_scene)) = (*models).get_model(renderable.model) {
                                         unsafe {
-                                            let mut instance = packed_scene.instance(0).unwrap().cast::<Spatial>().unwrap();
+                                            let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
                                             instance.set_name(GodotString::from_str("Node"));
-                                            owner.add_child(Some(instance.to_node()), true);
+                                            owner.add_child(Some(instance), true);
                                             self.spatials.insert(e, instance);
+                                            godot_print!("Started syncing from entity: {:?} to node", e.index());   
                                         }
                                     }
                                 }
                             }
-                            godot_print!("Started syncing from entity: {:?} to node", e.index());
                         }
                     }
                 },
@@ -104,17 +105,24 @@ impl<T> RPopsEngine<T>
         let query = <(Read<Position>, Read<GDSpatial>)>::query()
             .filter(changed::<Position>());
         for (entity, (pos, _)) in query.iter_entities(&mut self.world) {
-            if let Some(spatial) = self.spatials.get_mut(&entity) {
+            if let Some(node) = self.spatials.get_mut(&entity) {
                 // Calls to godot are inherently unsafe
-                let mut transform = unsafe { spatial.get_translation() };
-                transform.x = pos.x as f32;
-                transform.y = pos.y as f32;
-                unsafe { spatial.set_translation(transform) };
+                if let Some(mut spatial) = unsafe { node.cast::<Spatial>() } {
+                    let mut transform = unsafe { spatial.get_translation() };
+                    transform.x = pos.x as f32;
+                    transform.y = pos.y as f32;
+                    unsafe { spatial.set_translation(transform) };
+                } else if let Some(mut node2D) = unsafe { node.cast::<Node2D>() } {
+                    let mut position = unsafe { node2D.get_position() };
+                    position.x = pos.x as f32;
+                    position.y = pos.y as f32;
+                    unsafe { node2D.set_position(position) };
+                }
             }
         }
     }
 
-    pub fn _input(_owner: Spatial, _event: Option<InputEvent>) {
+    pub fn _input(_owner: Node, _event: Option<InputEvent>) {
     }
 
     pub fn set_systems(&mut self, systems: Vec<Box<dyn Schedulable>>) {
