@@ -31,7 +31,15 @@ impl DodgeTheCreepsInstance {
 
         self.engine.world.insert(
             (), 
-            (0..1).map(|_| (Renderable { model: player_renderable_index }, GDSpatial, Position { x: 50, y: 50 }, ))
+            (0..1).map(|_| (
+                Renderable { model: player_renderable_index }, 
+                GDSpatial, 
+                Position { x: 240f32, y: 450f32, rotation: euclid::Angle::radians(0f32) }, 
+                TakesInput { speed: 400f32 / 60f32 }, 
+                Velocity::default(),
+                Collider { width: 25.0, height: 25.0, offset_x: 0.0, offset_y: -2.5},
+                PlayerComp { },
+            ))
         );
     }
 

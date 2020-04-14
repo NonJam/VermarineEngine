@@ -24,6 +24,13 @@ pub fn load_scene(scene_path: &str) -> Template {
     }
 }
 
+pub struct Wrapper<T> {
+    pub inner: T
+}
+
+unsafe impl<T> Sync for Wrapper<T> {}
+unsafe impl<T> Send for Wrapper<T> {}
+
 pub struct RPopsEngine<T> where 
     T: Eq + std::hash::Hash + 'static {
     pub universe: Universe,
@@ -32,7 +39,6 @@ pub struct RPopsEngine<T> where
     pub executor: Executor,
 
     pub event_receiver: crossbeam_channel::Receiver<legion::event::Event>,
-    pub spatials: HashMap<Entity, Node>,
     phantom: std::marker::PhantomData<T>,
 }
 
@@ -42,7 +48,8 @@ impl<T> RPopsEngine<T>
     pub fn new(_owner: Node) -> Self {
         let universe = Universe::new();
         let mut world = universe.create_world();        
-        let resources = Resources::default();
+        let mut resources = Resources::default();
+        resources.insert(Wrapper { inner: HashMap::<Entity, Node>::new() } );
         let executor = Executor::new(vec![]);
 
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -54,7 +61,6 @@ impl<T> RPopsEngine<T>
             resources,
             executor,
             event_receiver: receiver,
-            spatials: HashMap::new(),
             phantom: std::marker::PhantomData,
         }
     }
@@ -70,31 +76,35 @@ impl<T> RPopsEngine<T>
             match event {
                 legion::event::Event::EntityRemoved(e, _) => { 
                     if let None = self.world.get_component::<GDSpatial>(e) {
-                        // Remove from hashmap
-                        if let Some(node) = self.spatials.get_mut(&e) {
-                            unsafe { node.free() };
-                            self.spatials.remove(&e);
-                            godot_print!("Stopped syncing from entity: {:?} to node", e.index())
+                        if let Some(mut wrapped) = self.resources.get_mut::<Wrapper<HashMap<Entity, Node>>>() {
+                            // Remove from hashmap
+                            if let Some(node) = wrapped.inner.get_mut(&e) {
+                                unsafe { node.free() };
+                                wrapped.inner.remove(&e);
+                                godot_print!("Stopped syncing from entity: {:?} to node", e.index())
+                            }
                         }
                     }
                 },
                 legion::event::Event::EntityInserted(e, _) => { 
                     if let Some(_) = self.world.get_component::<GDSpatial>(e) {
                         // Add to hashmap if not already in there
-                        if !self.spatials.contains_key(&e) {
-                            if let Some(renderable) = self.world.get_component::<Renderable>(e) {
-                                if let Some(models) = self.resources.get::<Models<T>>() {
-                                    if let Some(Template::Scene(packed_scene)) = (*models).get_model(renderable.model) {
-                                        unsafe {
-                                            let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
-                                            instance.set_name(GodotString::from_str("Node"));
-                                            owner.add_child(Some(instance), true);
-                                            self.spatials.insert(e, instance);
-                                            godot_print!("Started syncing from entity: {:?} to node", e.index());   
+                        if let Some(mut wrapped) = self.resources.get_mut::<Wrapper<HashMap<Entity, Node>>>() {
+                            if !wrapped.inner.contains_key(&e) {
+                                if let Some(renderable) = self.world.get_component::<Renderable>(e) {
+                                    if let Some(models) = self.resources.get::<Models<T>>() {
+                                        if let Some(Template::Scene(packed_scene)) = (*models).get_model(renderable.model) {
+                                            unsafe {
+                                                let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
+                                                instance.set_name(GodotString::from_str("Node"));
+                                                owner.add_child(Some(instance), true);
+                                                wrapped.inner.insert(e, instance);
+                                                godot_print!("Started syncing from entity: {:?} to node", e.index());   
+                                            }
                                         }
                                     }
                                 }
-                            }
+                            }   
                         }
                     }
                 },
@@ -104,19 +114,28 @@ impl<T> RPopsEngine<T>
         // Query on changed components to update node positions
         let query = <(Read<Position>, Read<GDSpatial>)>::query()
             .filter(changed::<Position>());
-        for (entity, (pos, _)) in query.iter_entities(&mut self.world) {
-            if let Some(node) = self.spatials.get_mut(&entity) {
-                // Calls to godot are inherently unsafe
-                if let Some(mut spatial) = unsafe { node.cast::<Spatial>() } {
-                    let mut transform = unsafe { spatial.get_translation() };
-                    transform.x = pos.x as f32;
-                    transform.y = pos.y as f32;
-                    unsafe { spatial.set_translation(transform) };
-                } else if let Some(mut node2D) = unsafe { node.cast::<Node2D>() } {
-                    let mut position = unsafe { node2D.get_position() };
-                    position.x = pos.x as f32;
-                    position.y = pos.y as f32;
-                    unsafe { node2D.set_position(position) };
+        if let Some(mut wrapped) = self.resources.get_mut::<Wrapper<HashMap<Entity, Node>>>() {
+            for (entity, (pos, _)) in query.iter_entities(&mut self.world) {
+                if let Some(node) = wrapped.inner.get_mut(&entity) {
+                    // Calls to godot are inherently unsafe
+                    if let Some(mut spatial) = unsafe { node.cast::<Spatial>() } {
+                        // Position
+                        let mut transform = unsafe { spatial.get_translation() };
+                        transform.x = pos.x as f32;
+                        transform.y = pos.y as f32;
+                        unsafe { spatial.set_translation(transform) };
+
+                        // Rotation
+                        let mut rotation = unsafe { spatial.get_rotation() };
+                        rotation.y = pos.rotation.get();
+                        unsafe { spatial.set_rotation(rotation) };
+                    } else if let Some(mut node2D) = unsafe { node.cast::<Node2D>() } {
+                        let mut position = unsafe { node2D.get_position() };
+                        position.x = pos.x as f32;
+                        position.y = pos.y as f32;
+                        unsafe { node2D.set_position(position) };
+                        unsafe { node2D.set_rotation(pos.rotation.get() as f64) };
+                    }
                 }
             }
         }
@@ -128,4 +147,23 @@ impl<T> RPopsEngine<T>
     pub fn set_systems(&mut self, systems: Vec<Box<dyn Schedulable>>) {
         self.executor = Executor::new(systems);
     }
+}
+
+pub enum Animator {
+    ASprite(AnimatedSprite),
+    APlayer(AnimationPlayer),
+    ATree(AnimationTree)
+}
+
+pub fn get_animator(entity: Entity, spatials: &mut HashMap<Entity, Node>) -> Option<Animator> {
+    if let Some(node) = spatials.get_mut(&entity) {
+        unsafe {
+            if let Some(node) = node.find_node(GodotString::from("Animator"), false, true) {
+                if let Some(asprite) = node.cast::<AnimatedSprite>() {
+                    return Some(Animator::ASprite(asprite));
+                }
+            }
+        }
+    }
+    None
 }

@@ -33,17 +33,17 @@ impl RPopsInstance {
 
         self.engine.world.insert(
             (), 
-            (0..1).map(|_| (Renderable { model: slime_model_index }, GDSpatial, Position { x: 0, y: 0 }, ))
+            (0..1).map(|_| (Renderable { model: slime_model_index }, GDSpatial, Position { x: 0f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
         );
 
         self.engine.world.insert(
             (), 
-            (0..1).map(|_| (Renderable { model: zombie_model_index }, GDSpatial, Position { x: -10, y: 0 }, ))
+            (0..1).map(|_| (Renderable { model: zombie_model_index }, GDSpatial, Position { x: -10f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
         );
 
         self.engine.world.insert(
             (),
-            (0..1).map(|_| (Position { x: -10, y: 0 }, ))
+            (0..1).map(|_| (Position { x: -10f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
         );
     }
 

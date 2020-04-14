@@ -11,8 +11,8 @@ pub(crate) fn create_test_system() -> Box<dyn Schedulable> {
         .with_query(<Write<Position>>::query())
         .build(move |commands, world, _resource, queries| {
             for (entity, mut pos) in queries.iter_entities_mut(&mut *world) {
-                pos.x+=1;
-                if pos.x > 100 {
+                pos.x+=1f32;
+                if pos.x > 100f32 {
                     commands.delete(entity);
                 }
             }

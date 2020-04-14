@@ -4,6 +4,7 @@ pub fn load_renderables(mut renderables: Models<Renderables>) -> Models<Renderab
     use CreatureRenderables::*;
 
     renderables.insert(Some("Player"), Some(Renderables::Creatures(Player)), load_scene("Player"));
+    renderables.insert(Some("Enemy"), Some(Renderables::Creatures(Enemy)), load_scene("Enemy"));
 
     renderables
 }
@@ -16,4 +17,5 @@ pub enum Renderables {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum CreatureRenderables { 
     Player,
+    Enemy,
 }
