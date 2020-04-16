@@ -27,12 +27,12 @@ impl DodgeTheCreepsInstance {
 
         use CreatureRenderables::*;
         let renderables = self.engine.resources.get::<Models<Renderables>>().unwrap();
-        let player_renderable_index = renderables.index_from_t(&Renderables::Creatures(Player)).unwrap();
-
+        let player = renderables.data_from_t(&Renderables::Creatures(Player)).unwrap();
+        
         self.engine.world.insert(
             (), 
             (0..1).map(|_| (
-                Renderable { model: player_renderable_index }, 
+                Renderable { index: player.1, template: player.0 }, 
                 GDSpatial, 
                 Position { x: 240f32, y: 450f32, rotation: euclid::Angle::radians(0f32) }, 
                 TakesInput { speed: 400f32 / 60f32 }, 

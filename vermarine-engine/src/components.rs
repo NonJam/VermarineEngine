@@ -1,3 +1,5 @@
+use crate::prelude::*;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Position {
     pub x: f32,
@@ -7,7 +9,8 @@ pub struct Position {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Renderable {
-    pub model: usize,
+    pub index: usize,
+    pub template: Template,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

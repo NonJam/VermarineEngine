@@ -12,13 +12,16 @@ pub fn create_systems() -> Vec<Box<dyn Schedulable>> {
 
 pub(crate) fn input_system() -> Box<dyn Schedulable> {
     SystemBuilder::<()>::new("InputSystem")
+        .write_component::<Renderable>()
         .write_resource::<Wrapper<HashMap<Entity, Node>>>()
         .with_query(<(Read<TakesInput>, Write<Velocity>)>::query())
-        .build(move |commands, world, mut resource, queries| {
+        .build(move |_commands, world, _resource, queries| {
             for (entity, (takes_input, mut vel)) in queries.iter_entities_mut(&mut *world) {
                 vel.x = 0f32;
                 vel.y = 0f32;
 
+                let mut i_x = 0i32;
+                let mut i_y = 0i32;
                 for (key, x, y) in [
                     ("move_left", -1, 0),
                     ("move_right", 1, 0),
@@ -26,6 +29,8 @@ pub(crate) fn input_system() -> Box<dyn Schedulable> {
                     ("move_down", 0, 1),
                 ].iter() {
                     if Input::godot_singleton().is_action_pressed(GodotString::from(key)) {
+                        i_x += x;
+                        i_y += y;
                         vel.x += *x as f32;
                         vel.y += *y as f32;
                     }
@@ -38,28 +43,31 @@ pub(crate) fn input_system() -> Box<dyn Schedulable> {
                     vel.y = vec.y;
                 }
 
-                if let Some(animator) = get_animator(entity, &mut resource.inner) {
-                    match animator {
-                        Animator::ASprite(mut node) => {
-                            unsafe { node._set_playing(true); }
-                            if vel.x != 0f32 {
-                                unsafe { node.play(GodotString::from("right"), false); }
-                            } else if vel.y != 0f32 {
-                                unsafe { node.play(GodotString::from("up"), false); }
-                                unsafe { node.set_flip_v(vel.y > 0f32); }
-                            } else {
-                                unsafe { node._set_playing(false); }
-                            }
+                if let Some(mut renderable) = world.get_component_mut::<Renderable>(entity) {
+                    if let Template::ASprite(mut a_sprite) = renderable.template {
+                        a_sprite.playing = true;
+                        if i_x != 0i32 {
+                            a_sprite.animation = "right";
+                            a_sprite.flip_v = false;
+                            a_sprite.flip_h = i_x < 0i32;
+                        } else if i_y != 0i32 {
+                            a_sprite.animation = "up";
+                            a_sprite.flip_v = i_y > 0i32;
+                        } else {
+                            a_sprite.playing = false;
+                        }
+                        renderable.template = Template::ASprite(a_sprite)
                     }
                 }
+            }
         })
 }
 
 pub(crate) fn move_system() -> Box<dyn Schedulable> {
     SystemBuilder::<()>::new("MoveSystem")
         .with_query(<(Write<Position>, Read<Velocity>)>::query())
-        .build(move |commands, world, resource, queries| {
-            for (entity, (mut pos, vel)) in queries.iter_entities_mut(&mut *world) {
+        .build(move |_commands, world, _resource, queries| {
+            for (_entity, (mut pos, vel)) in queries.iter_entities_mut(&mut *world) {
                 let rot = euclid::Rotation2D::<f32, euclid::UnknownUnit, euclid::UnknownUnit>::new(pos.rotation);
                 let vel = rot.transform_vector(euclid::Vector2D::<f32, euclid::UnknownUnit>::new(vel.x, vel.y));
                 pos.x += vel.x;
@@ -71,19 +79,29 @@ pub(crate) fn move_system() -> Box<dyn Schedulable> {
 pub(crate) fn spawn_enemy_system() -> Box<dyn Schedulable> {
     let mut counter: i32 = 1;
     SystemBuilder::<()>::new("SpawnEnemySystem")
-        .read_resource::<Models<Renderables>>()
-        .build(move |commands, world, resource, queries| {
+        .write_resource::<Models<Renderables>>()
+        .build(move |commands, _world, resource, _queries| {
             if counter % 30 == 0 {
                 counter = 0;
 
-                let enemy_renderable_index = resource.index_from_t(&Renderables::Creatures(CreatureRenderables::Enemy)).unwrap();
+                let mut enemy = resource.data_from_t(&Renderables::Creatures(CreatureRenderables::Enemy)).unwrap();
+                let mut rand = rand::thread_rng();
+
+                let anim = rand.gen_range(0, 3);
+                if let Template::ASprite(mut a_sprite) = enemy.0 {
+                    a_sprite.animation = match anim {
+                        0 => {"swim"},
+                        1 => {"fly"},
+                        2 => {"walk"}
+                        // This wont happen
+                        _ => {""}
+                    };
+                    enemy.0 = Template::ASprite(a_sprite);
+                }
 
                 commands.insert(
                     (),
                     (0..1).map(move |_| {
-                        
-                        let mut rand = rand::thread_rng();
-
                         let mut position = if rand::random() {
                             // Spawn horizontal
                             let y = (rand.gen_range(0, 2) * 719) as f32;
@@ -114,7 +132,7 @@ pub(crate) fn spawn_enemy_system() -> Box<dyn Schedulable> {
                         
                         return (
                         EnemyComp { },
-                        Renderable { template: enemy_renderable_index }, 
+                        Renderable { index: enemy.1, template: enemy.0 }, 
                         GDSpatial, 
                         position, 
                         Velocity { x: (rand.gen::<f32>() * 1.7f32) + 2.5f32, y: 0f32 },
@@ -134,10 +152,10 @@ pub(crate) fn collider_system() -> Box<dyn Schedulable> {
         .read_component::<EnemyComp>()
         .with_query(<(Read<Position>, Read<Collider>, Read<EnemyComp>)>::query())
         .with_query(<(Read<Position>, Read<Collider>, Read<PlayerComp>)>::query())
-        .build(move |commands, world, resource, queries| {
+        .build(move |_commands, world, _resource, queries| {
             
-            for (entity, (pos, col, _)) in queries.0.iter_entities(&mut *world) {
-                for (entity2, (pos2, col2, _)) in queries.1.iter_entities(&mut *world) {
+            for (_entity, (pos, col, _)) in queries.0.iter_entities(&mut *world) {
+                for (_entity2, (pos2, col2, _)) in queries.1.iter_entities(&mut *world) {
                     let rot = euclid::Rotation2D::<f32, euclid::UnknownUnit, euclid::UnknownUnit>::new(pos.rotation);
                     let mut a1 = rot.transform_vector(euclid::Vector2D::<f32, euclid::UnknownUnit>::new(
                         col.offset_x, 

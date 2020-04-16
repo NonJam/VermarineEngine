@@ -28,17 +28,17 @@ impl RPopsInstance {
 
         use CreatureModels::*;
         let models = self.engine.resources.get::<Models<Model>>().unwrap();
-        let slime_model_index = models.index_from_t(&Model::Creatures(Slime)).unwrap();
-        let zombie_model_index = models.index_from_t(&Model::Creatures(Zombie)).unwrap();
+        let slime = models.data_from_t(&Model::Creatures(Slime)).unwrap();
+        let zombie = models.data_from_t(&Model::Creatures(Zombie)).unwrap();
 
         self.engine.world.insert(
             (), 
-            (0..1).map(|_| (Renderable { model: slime_model_index }, GDSpatial, Position { x: 0f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
+            (0..1).map(|_| (Renderable { index: slime.1, template: slime.0 }, GDSpatial, Position { x: 0f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
         );
 
         self.engine.world.insert(
             (), 
-            (0..1).map(|_| (Renderable { model: zombie_model_index }, GDSpatial, Position { x: -10f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
+            (0..1).map(|_| (Renderable { index: zombie.1, template: zombie.0 }, GDSpatial, Position { x: -10f32, y: 0f32, rotation: euclid::Angle::radians(0f32) }, ))
         );
 
         self.engine.world.insert(

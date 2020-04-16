@@ -1,14 +1,14 @@
 use crate::prelude::*;
 use std::collections::HashMap;
 
-pub fn try_load_scene(scene_path: &str) -> Result<Template, String> {
+pub fn try_load_scene(scene_path: &str) -> Result<PackedScene, String> {
     if let Some(scene) = ResourceLoader::godot_singleton().load(
         GodotString::from_str(format!("res://scenes/{}.tscn", scene_path)),
         GodotString::from_str("PackedScene"),
         false,
     ) {
         if let Some(scene) = scene.cast::<PackedScene>() {
-            return Ok(Template::Scene(scene));
+            return Ok(scene);
         } else {
             return Err(format!("Could not cast {} to PackedScene", scene_path));
         }
@@ -17,7 +17,7 @@ pub fn try_load_scene(scene_path: &str) -> Result<Template, String> {
     }
 }
 
-pub fn load_scene(scene_path: &str) -> Template {
+pub fn load_scene(scene_path: &str) -> PackedScene {
     match try_load_scene(scene_path) {
         Err(e) => panic!(e),
         Ok(template) => template,
@@ -93,7 +93,7 @@ impl<T> RPopsEngine<T>
                             if !wrapped.inner.contains_key(&e) {
                                 if let Some(renderable) = self.world.get_component::<Renderable>(e) {
                                     if let Some(models) = self.resources.get::<Models<T>>() {
-                                        if let Some(Template::Scene(packed_scene)) = (*models).get_model(renderable.model) {
+                                        if let Some(packed_scene) = (*models).scene_from_index(renderable.index) {
                                             unsafe {
                                                 let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
                                                 instance.set_name(GodotString::from_str("Node"));
@@ -139,6 +139,42 @@ impl<T> RPopsEngine<T>
                 }
             }
         }
+
+        // Update animation
+        let query = <(Read<GDSpatial>, Read<Renderable>)>::query();
+        if let Some(mut wrapped) = self.resources.get_mut::<Wrapper<HashMap<Entity, Node>>>() {
+            for (entity, (_, renderable)) in query.iter_entities(&mut self.world) {
+                if let Some(node) = wrapped.inner.get_mut(&entity) {
+                    if let Some(mut node) = unsafe { node.cast::<Node>() } {
+                        match renderable.template {
+                            Template::ASprite(state) => {
+                                if let Some(mut sprite) = get_animator::<AnimatedSprite>(node) {
+                                    // Update node from state
+                                    unsafe {
+                                        sprite._set_playing(state.playing);
+                                        let gd_string = GodotString::from(state.animation);
+                                        sprite.play(gd_string, false);
+                                        sprite.set_flip_h(state.flip_h);
+                                        sprite.set_flip_v(state.flip_v);
+                                    }
+                                }
+                            },
+                            Template::APlayer(state) => {
+                                if let Some(sprite) = get_animator::<AnimationTree>(node) {
+                                    // Update node from state
+                                }
+                            },
+                            Template::ATree(state) => {
+                                if let Some(sprite) = get_animator::<AnimationTree>(node) {
+                                    // Update node from state
+                                }
+                            },
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn _input(_owner: Node, _event: Option<InputEvent>) {
@@ -149,21 +185,19 @@ impl<T> RPopsEngine<T>
     }
 }
 
-pub enum Animator {
-    ASprite(AnimatedSprite),
-    APlayer(AnimationPlayer),
-    ATree(AnimationTree)
-}
-
-pub fn get_animator(entity: Entity, spatials: &mut HashMap<Entity, Node>) -> Option<Animator> {
-    if let Some(node) = spatials.get_mut(&entity) {
-        unsafe {
-            if let Some(node) = node.find_node(GodotString::from("Animator"), false, true) {
-                if let Some(asprite) = node.cast::<AnimatedSprite>() {
-                    return Some(Animator::ASprite(asprite));
-                }
+pub(crate) fn get_animator<T>(node: Node) -> Option<T> 
+    where T: GodotObject {
+    let mut i = 0;
+    loop {
+        if let Some(child_node) = unsafe { node.get_child(i) } {
+            if let Some(child_node) = unsafe { child_node.cast::<T>() } {
+                return Some(child_node);
             }
+        } else {
+            return None;
         }
+
+        i += 1;
     }
     None
 }
