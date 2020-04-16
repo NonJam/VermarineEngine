@@ -1,14 +1,14 @@
 [package]
-name = "dodge-the-creeps-example"
+name = "vermarine-engine"
 version = "0.1.0"
 authors = ["supbscripter, cdrch"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[lib]
-crate-type = ["cdylib"]
 
 [dependencies]
+rand = "0.7"
 gdnative = "0.8"
-legion = { path = "../../legion-ecs" }
-vermarine-engine = { path = "../vermarine-engine" }
+euclid = "0.20"
+legion = { path = "../legion-ecs"}
+crossbeam-channel = "0.4.0"

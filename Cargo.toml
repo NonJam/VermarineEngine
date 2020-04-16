@@ -4,3 +4,6 @@ members = [
     "vermarine-engine",
     "dodge-the-creeps-example"
 ]
+exclude = [
+    "legion-ecs"
+]

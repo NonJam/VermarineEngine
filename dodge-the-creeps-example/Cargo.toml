@@ -1,5 +1,5 @@
 [package]
-name = "rpops-core"
+name = "dodge-the-creeps-example"
 version = "0.1.0"
 authors = ["supbscripter, cdrch"]
 edition = "2018"
@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 gdnative = "0.8"
-legion = { path = "../../legion-ecs" }
+legion = { path = "../legion-ecs" }
 vermarine-engine = { path = "../vermarine-engine" }
