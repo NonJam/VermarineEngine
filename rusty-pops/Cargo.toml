@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "rpops-core",
+    "vermarine-engine",
+    "dodge-the-creeps-example"
+]
