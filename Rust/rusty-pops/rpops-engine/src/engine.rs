@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub fn try_load_scene(scene_path: &str) -> Result<Template, String> {
     if let Some(scene) = ResourceLoader::godot_singleton().load(
-        GodotString::from_str(format!("res://Scenes/{}.tscn", scene_path)),
+        GodotString::from_str(format!("res://scenes/{}.tscn", scene_path)),
         GodotString::from_str("PackedScene"),
         false,
     ) {
