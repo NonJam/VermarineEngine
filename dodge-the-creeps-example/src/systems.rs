@@ -44,19 +44,14 @@ pub(crate) fn input_system() -> Box<dyn Schedulable> {
                             unsafe { node._set_playing(true); }
                             if vel.x != 0f32 {
                                 unsafe { node.play(GodotString::from("right"), false); }
-                                unsafe { node.set_flip_v(false); }
-                                unsafe { node.set_flip_h(vel.x < 0f32); }
                             } else if vel.y != 0f32 {
                                 unsafe { node.play(GodotString::from("up"), false); }
                                 unsafe { node.set_flip_v(vel.y > 0f32); }
                             } else {
                                 unsafe { node._set_playing(false); }
                             }
-                        },
-                        _ => {},
                     }
                 }
-            }
         })
 }
 
@@ -74,11 +69,11 @@ pub(crate) fn move_system() -> Box<dyn Schedulable> {
 }
 
 pub(crate) fn spawn_enemy_system() -> Box<dyn Schedulable> {
-    let mut counter: i32 = 999;
+    let mut counter: i32 = 1;
     SystemBuilder::<()>::new("SpawnEnemySystem")
         .read_resource::<Models<Renderables>>()
         .build(move |commands, world, resource, queries| {
-            if counter % 1000 == 0 {
+            if counter % 30 == 0 {
                 counter = 0;
 
                 let enemy_renderable_index = resource.index_from_t(&Renderables::Creatures(CreatureRenderables::Enemy)).unwrap();
@@ -119,11 +114,11 @@ pub(crate) fn spawn_enemy_system() -> Box<dyn Schedulable> {
                         
                         return (
                         EnemyComp { },
-                        Renderable { model: enemy_renderable_index }, 
+                        Renderable { template: enemy_renderable_index }, 
                         GDSpatial, 
                         position, 
-                        Velocity { x: 0f32, y: 0f32 },
-                        Collider { width: 0.0, height: 25.0, offset_x: 14.0, offset_y: 0.0 },
+                        Velocity { x: (rand.gen::<f32>() * 1.7f32) + 2.5f32, y: 0f32 },
+                        Collider { width: 12.0, height: 12.0, offset_x: 14.0, offset_y: 0.0 },
                     )}
                 ));
             }
@@ -152,7 +147,6 @@ pub(crate) fn collider_system() -> Box<dyn Schedulable> {
                         col.offset_x, 
                         col.offset_y
                     ));
-                    //godot_print!("Angle: {} pre-rotated [{}, {}], post-rotated [{}. {}]", pos.rotation.get(), col.offset_x + (col.width / 2.0), col.offset_y + (col.height / 2.0), a2.x, a2.y);
                     a1.x += pos.x - (col.width / 2.0);
                     a1.y += pos.y - (col.height / 2.0);
                     a2.x += pos.x + (col.width / 2.0);
@@ -172,7 +166,6 @@ pub(crate) fn collider_system() -> Box<dyn Schedulable> {
                     b2.x += pos2.x + (col2.width / 2.0);
                     b2.y += pos2.y + (col2.height / 2.0);
 
-                    godot_print!("are overlapping?\n[{:?}, {:?}]\n[{:?}, {:?}]\n", a1, a2, b1, b2);
                     if (b1.x >= a1.x && b1.x <= a2.x) || (b2.x >= a1.x && b2.x <= a2.x) {
                         if (b1.y >= a1.y && b1.y <= a2.y) || (b2.y >= a1.y && b2.y <= a2.y) {
                             // We have a collision
