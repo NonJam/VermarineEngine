@@ -66,6 +66,7 @@ impl<T> RPopsEngine<T>
     }
 
     pub fn _ready(&mut self, _owner: Node) {
+        godot_print!("HelloWorld");
     }
 
     pub fn _physics_process(&mut self, mut owner: Node, _delta: f64) {
