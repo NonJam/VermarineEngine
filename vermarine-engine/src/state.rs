@@ -22,7 +22,7 @@ pub enum Trans {
 
     /// Executes a sequence of StateTrans'
     Sequence(Vec<Trans>),
-    
+
     /// Quit out of the engine
     Quit,
 }
@@ -48,10 +48,10 @@ impl<'a> StateData {
 }
 
 pub trait State {
-    fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) { }
-    fn on_pop(&mut self, data: &mut StateData, resources: &mut Resources) { }
-    fn on_cover(&mut self, data: &mut StateData, resources: &mut Resources) { }
-    fn on_uncover(&mut self, data: &mut StateData, resources: &mut Resources) { }
-    fn update(&mut self, data: &mut StateData, resources: &mut Resources) -> Trans { Trans::None }
-    fn shadow_update(&mut self, data: &mut StateData, resources: &mut Resources) { }
+    fn on_push(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
+    fn on_pop(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
+    fn on_cover(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
+    fn on_uncover(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
+    fn update(&mut self, _data: &mut StateData, _resources: &mut Resources) -> Trans { Trans::None }
+    fn shadow_update(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
 }

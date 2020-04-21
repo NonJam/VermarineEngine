@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::collections::HashMap;
 
 pub fn try_load_scene(scene_path: &str) -> Result<PackedScene, String> {
     if let Some(scene) = ResourceLoader::godot_singleton().load(
@@ -45,8 +44,7 @@ impl<T> RPopsEngine<T>
     T: Eq + std::hash::Hash + 'static {
     pub fn new(owner: Node) -> Self {
         let universe = Universe::new();
-        let mut world = universe.create_world();        
-        let mut resources = Resources::default();
+        let resources = Resources::default();
 
         RPopsEngine {
             universe,
@@ -61,7 +59,7 @@ impl<T> RPopsEngine<T>
         godot_print!("HelloWorld");
     }
 
-    pub fn _physics_process(&mut self, mut owner: Node, _delta: f64) {
+    pub fn _physics_process(&mut self, _owner: Node, _delta: f64) {
         // Run methods on states in the stack
         let state_len = self.states.len();
         for i in 0..state_len {
@@ -94,7 +92,6 @@ impl<T> RPopsEngine<T>
             Trans::NewStack(stack) => { self.new_stack(stack) },
             Trans::Sequence(sequence) => { self.sequence(sequence) },
             Trans::Quit => {},
-            _ => {},
         }
     }
 
@@ -105,7 +102,7 @@ impl<T> RPopsEngine<T>
             state.1.on_cover(&mut state.0, &mut self.resources);
         }
 
-        let mut world = self.universe.create_world();
+        let world = self.universe.create_world();
         let mut data = StateData::new(world);
 
         let mut node = Node::new();
@@ -177,7 +174,6 @@ pub(crate) fn get_animator<T>(node: Node) -> Option<T>
 
         i += 1;
     }
-    None
 }
 
 pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (StateData, Box<(dyn State)>)) 
@@ -236,12 +232,12 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                 let mut rotation = unsafe { spatial.get_rotation() };
                 rotation.y = pos.rotation.get();
                 unsafe { spatial.set_rotation(rotation) };
-            } else if let Some(mut node2D) = unsafe { node.cast::<Node2D>() } {
-                let mut position = unsafe { node2D.get_position() };
+            } else if let Some(mut node2d) = unsafe { node.cast::<Node2D>() } {
+                let mut position = unsafe { node2d.get_position() };
                 position.x = pos.x as f32;
                 position.y = pos.y as f32;
-                unsafe { node2D.set_position(position) };
-                unsafe { node2D.set_rotation(pos.rotation.get() as f64) };
+                unsafe { node2d.set_position(position) };
+                unsafe { node2d.set_rotation(pos.rotation.get() as f64) };
             }
         }
     }
@@ -250,7 +246,7 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
     let query = <(Read<GDSpatial>, Read<Renderable>)>::query();
     for (entity, (_, renderable)) in query.iter_entities(&mut state.0.world) {
         if let Some(node) = state.0.node_lookup.get_mut(&entity) {
-            if let Some(mut node) = unsafe { node.cast::<Node>() } {
+            if let Some(node) = unsafe { node.cast::<Node>() } {
                 match renderable.template {
                     Template::ASprite(state) => {
                         if let Some(mut sprite) = get_animator::<AnimatedSprite>(node) {
@@ -264,13 +260,13 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                             }
                         }
                     },
-                    Template::APlayer(state) => {
-                        if let Some(sprite) = get_animator::<AnimationTree>(node) {
+                    Template::APlayer(_state) => {
+                        if let Some(_sprite) = get_animator::<AnimationTree>(node) {
                             // Update node from state
                         }
                     },
-                    Template::ATree(state) => {
-                        if let Some(sprite) = get_animator::<AnimationTree>(node) {
+                    Template::ATree(_state) => {
+                        if let Some(_sprite) = get_animator::<AnimationTree>(node) {
                             // Update node from state
                         }
                     },
