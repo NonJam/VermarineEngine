@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "vermarine-engine",
-    "dodge-the-creeps-example"
+    "dodge-the-creeps-example",
+    "scene-example"
 ]
 exclude = [
     "legion-ecs"

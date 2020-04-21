@@ -13,6 +13,7 @@ pub fn create_systems() -> Vec<Box<dyn Schedulable>> {
 pub(crate) fn input_system() -> Box<dyn Schedulable> {
     SystemBuilder::<()>::new("InputSystem")
         .write_component::<Renderable>()
+        .write_resource::<Wrapper<HashMap<Entity, Node>>>()
         .with_query(<(Read<TakesInput>, Write<Velocity>)>::query())
         .build(move |_commands, world, _resource, queries| {
             for (entity, (takes_input, mut vel)) in queries.iter_entities_mut(&mut *world) {
