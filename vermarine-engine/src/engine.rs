@@ -87,12 +87,12 @@ impl<T> RPopsEngine<T>
     pub(crate) fn run_state_trans(&mut self, trans: Trans) {
         match trans {
             Trans::None => {},
-            Trans::Push(State) => { self.push(State) },
+            Trans::Push(state) => { self.push(state) },
             Trans::Pop => { self.pop() },
-            Trans::Switch(State) => { self.switch(State) },
-            Trans::Replace(State) => { self.replace(State) },
-            Trans::NewStack(Stack) => { self.new_stack(Stack) },
-            Trans::Sequence(Sequence) => { self.sequence(Sequence) },
+            Trans::Switch(state) => { self.switch(state) },
+            Trans::Replace(state) => { self.replace(state) },
+            Trans::NewStack(stack) => { self.new_stack(stack) },
+            Trans::Sequence(sequence) => { self.sequence(sequence) },
             Trans::Quit => {},
             _ => {},
         }
@@ -137,20 +137,29 @@ impl<T> RPopsEngine<T>
         }
     }
 
-    pub(crate) fn switch(&mut self, state: Box<dyn State>) {
-
+    pub fn switch(&mut self, state: Box<dyn State>) {
+        self.pop();
+        self.push(state);
     }
 
-    pub(crate) fn replace(&mut self, state: Box<dyn State>) {
-
+    pub fn replace(&mut self, state: Box<dyn State>) {
+        self.new_stack(vec![state]);
     }
 
-    pub(crate) fn new_stack(&mut self, state: Vec<Box<dyn State>>) {
+    pub fn new_stack(&mut self, mut states: Vec<Box<dyn State>>) {
+        while let Some(mut popped) = self.states.pop() {
+            popped.1.on_pop(&mut popped.0, &mut self.resources);
+        }
 
+        while let Some(popped) = states.pop() {
+            self.push(popped);
+        }
     }
 
-    pub(crate) fn sequence(&mut self, sequence: Vec<Trans>) {
-
+    pub fn sequence(&mut self, sequence: Vec<Trans>) {
+        for trans in sequence.into_iter() {
+            self.run_state_trans(trans);
+        }
     }
 }
 

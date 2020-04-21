@@ -4,18 +4,25 @@ use std::collections::HashMap;
 pub enum Trans {
     /// Continue as normal
     None,
+
     /// Add a new state to the top of the stack
     Push(Box<dyn State>),
+
     /// Remove the state at the top of the stack
     Pop,
+
     /// Set the the state at the top of the stack to the given state
     Switch(Box<dyn State>),
+
     /// Replaces the stack with the given state
     Replace(Box<dyn State>),
+
     /// Replaces the stack with the given stack
     NewStack(Vec<Box<dyn State>>),
+
     /// Executes a sequence of StateTrans'
     Sequence(Vec<Trans>),
+    
     /// Quit out of the engine
     Quit,
 }
