@@ -24,8 +24,7 @@ impl State for MainState {
         );
     }
 
-    fn update(&mut self, data: &mut StateData, resources: &mut Resources) -> Trans {
+    fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
         self.executor.execute(&mut data.world, resources);
-        Trans::None
     }
 }

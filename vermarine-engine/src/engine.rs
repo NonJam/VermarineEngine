@@ -36,6 +36,7 @@ pub struct RPopsEngine<T> where
     states: Vec<(StateData, Box<dyn State>)>,
     pub resources: Resources,
     owner: Node,
+    trans_receiver: crossbeam_channel::Receiver<Box<dyn FnOnce() -> Trans>>,
     phantom: std::marker::PhantomData<T>,
 }
 
@@ -44,12 +45,15 @@ impl<T> RPopsEngine<T>
     T: Eq + std::hash::Hash + 'static {
     pub fn new(owner: Node) -> Self {
         let universe = Universe::new();
-        let resources = Resources::default();
+        let mut resources = Resources::default();
+        let (sender, receiver) = crossbeam_channel::bounded(1);
+        resources.insert(Wrapper { inner: sender });
 
         RPopsEngine {
             universe,
             states: Vec::new(),
             resources,
+            trans_receiver: receiver,
             phantom: std::marker::PhantomData,
             owner: owner,
         }
@@ -66,8 +70,13 @@ impl<T> RPopsEngine<T>
             let (data, state) = self.states.get_mut(i).unwrap();
             
             if i == state_len - 1 {
-                let trans = state.update(data, &mut self.resources);
-                self.run_state_trans(trans);
+                state.update(data, &mut self.resources);
+                
+                if let Ok(trans) = self.trans_receiver.try_recv() {
+                    let trans = trans();
+                    self.run_state_trans(trans);
+                }
+
             } else {
                 state.shadow_update(data, &mut self.resources); 
             }
@@ -95,7 +104,7 @@ impl<T> RPopsEngine<T>
         }
     }
 
-    pub fn push(&mut self, mut state: Box<dyn State>) {        
+    pub fn push(&mut self, mut state: Box<dyn State>) {
         let state_len = self.states.len();
         if state_len >= 1 {
             let state = self.states.get_mut(state_len - 1).unwrap();

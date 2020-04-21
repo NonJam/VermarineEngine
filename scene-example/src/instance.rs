@@ -29,11 +29,21 @@ impl SceneExampleInstance {
 
     #[export]
     fn _physics_process(&mut self, owner: Node, delta: f64) {
-        self.engine._physics_process(owner, delta);
-
         if Input::godot_singleton().is_action_just_pressed(GodotString::from("pop")) {
-            self.engine.pop();
+            let sender = self.engine.resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
+            (*sender).inner.try_send(Box::from(|| Trans::Pop));
+        } else if Input::godot_singleton().is_action_just_pressed(GodotString::from("a")) {
+            let sender = self.engine.resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
+            (*sender).inner.try_send(Box::from(|| Trans::Push(Box::new(ExampleStateA { }))));
+        } else if Input::godot_singleton().is_action_just_pressed(GodotString::from("b")) {
+            let sender = self.engine.resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
+            (*sender).inner.try_send(Box::from(|| Trans::Push(Box::new(ExampleStateB { }))));
+        } else if Input::godot_singleton().is_action_just_pressed(GodotString::from("c")) {
+            let sender = self.engine.resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
+            (*sender).inner.try_send(Box::from(|| Trans::Push(Box::new(ExampleStateC { }))));
         }
+
+        self.engine._physics_process(owner, delta);
     }
 }
 
