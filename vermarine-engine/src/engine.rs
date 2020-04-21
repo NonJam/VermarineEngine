@@ -66,20 +66,19 @@ impl<T> RPopsEngine<T>
     pub fn _physics_process(&mut self, _owner: Node, _delta: f64) {
         // Run methods on states in the stack
         let state_len = self.states.len();
-        for i in 0..state_len {
+        for i in (0..state_len).rev() {
             let (data, state) = self.states.get_mut(i).unwrap();
             
             if i == state_len - 1 {
                 state.update(data, &mut self.resources);
-                
-                if let Ok(trans) = self.trans_receiver.try_recv() {
-                    let trans = trans();
-                    self.run_state_trans(trans);
-                }
-
             } else {
                 state.shadow_update(data, &mut self.resources); 
             }
+        }
+
+        if let Ok(trans) = self.trans_receiver.try_recv() {
+            let trans = trans();
+            self.run_state_trans(trans);
         }
 
         let state_len = self.states.len();
@@ -201,7 +200,7 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                     }
                 }
             },
-            legion::event::Event::EntityInserted(e, _) => { 
+            legion::event::Event::EntityInserted(e, _) => {
                 if let Some(_) = state.0.world.get_component::<GDSpatial>(e) {
                     // Add to hashmap if not already in there
                     if !state.0.node_lookup.contains_key(&e) {
@@ -215,9 +214,17 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                                         state.0.node_lookup.insert(e, instance);
                                         godot_print!("Started syncing from entity: {:?} to node", e.index());   
                                     }
+                                } else {
+                                    godot_print!("Could not find scene listen from renderable component");
                                 }
+                            } else {
+                                godot_print!("Could not access Models<T> resource");
                             }
+                        } else {
+                            godot_print!("Could not find renderable component on unlinked GDSpatial");
                         }
+                    } else {
+                        godot_print!("Found GDSpatial without Node");
                     }
                 }
             },
