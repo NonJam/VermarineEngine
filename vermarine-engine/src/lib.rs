@@ -113,32 +113,42 @@
 //! 1. Inside of one of the state methods. All of these methods give access to Resources mutably.
 //! 2. Inside of a system. Inside of a system you can access Resources mutably.
 //! 
-//! Example of writing inside of a state method:
+//! Example of sending inside of a state method:
 //! ```
-//! // Sending a push
-//! let sender = resources.get::<TransResource>().unwrap();
-//! sender.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-//! 
-//! // Sending a pop
-//! let sender = resources.get::<TransResource>().unwrap();
-//! sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
+//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+//!     // Sending a push
+//!     let sender = resources.get::<TransResource>().unwrap();
+//!     sender.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
+//! }
+//! ```
+//! or for sending a pop
+//! ```
+//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+//!     // Sending a pop
+//!     let sender = resources.get::<TransResource>().unwrap();
+//!     sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
+//! }
 //! ```
 //! 
-//! Example of writing inside of a system:
+//! Example of sending inside of a system:
 //! ```
 //!     SystemBuilder::<()>::new("ExampleSystem")
 //!         .write_resource::<TransResource>()
 //!         .build(move |commands, world, resources, queries| {
 //!             // Sending a push
 //!             resources.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-//! 
+//!         })
+//! ```
+//! or for sending a pop
+//! ```
+//!     SystemBuilder::<()>::new("ExampleSystem")
+//!         .write_resource::<TransResource>()
+//!         .build(move |commands, world, resources, queries| {
 //!             // Sending a pop
 //!             resources.trans.try_send(Box::from(|| Trans::Pop)).ok();
 //!         })
 //! ```
-//! 
 //! If you attempt to send more than one Trans only the first one will be used
- 
 
 mod engine;
 mod components;
