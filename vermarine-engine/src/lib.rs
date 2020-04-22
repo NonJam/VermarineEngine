@@ -24,7 +24,7 @@
 //!     engine: VermarineEngine<Renderables>,
 //! }
 //! ```
-//! for now don't worry about the <Renderables>, we'll get to that later
+//! for now don't worry about the \<Renderables>, we'll get to that later
 //! 
 //! 5. Fix your _init(_owner: Node) method! Our struct has a variable in it now so we need to set that.
 //! ```
