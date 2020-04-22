@@ -1,26 +1,10 @@
 use crate::prelude::*;
 
-pub fn try_load_scene(scene_path: &str) -> Result<PackedScene, String> {
-    if let Some(scene) = ResourceLoader::godot_singleton().load(
-        GodotString::from_str(format!("res://scenes/{}.tscn", scene_path)),
-        GodotString::from_str("PackedScene"),
-        false,
-    ) {
-        if let Some(scene) = scene.cast::<PackedScene>() {
-            return Ok(scene);
-        } else {
-            return Err(format!("Could not cast {} to PackedScene", scene_path));
-        }
-    } else {
-        return Err(format!("Could not find {}", scene_path));
-    }
-}
+unsafe impl Sync for TransResource {}
+unsafe impl Send for TransResource {}
 
-pub fn load_scene(scene_path: &str) -> PackedScene {
-    match try_load_scene(scene_path) {
-        Err(e) => panic!(e),
-        Ok(template) => template,
-    }
+pub struct TransResource {
+    pub trans: crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>,
 }
 
 pub struct Wrapper<T> {
@@ -47,7 +31,7 @@ impl<T> RPopsEngine<T>
         let universe = Universe::new();
         let mut resources = Resources::default();
         let (sender, receiver) = crossbeam_channel::bounded(1);
-        resources.insert(Wrapper { inner: sender });
+        resources.insert::<>(TransResource { trans: sender });
 
         RPopsEngine {
             universe,
@@ -325,5 +309,42 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                 }
             }
         }
+    }
+}
+
+/// Takes a path to a scene prepends res://scenes/ and appends .tscn then attempts to load the scene
+/// 
+/// this path is CAPS SENSITIVE it is EXTREMELY important that your scenes folder is ALL lowercase and your specified path is correctly cased or else it WILL NOT WORK ON LINUX
+/// 
+/// # Errors
+/// 
+/// This can return an error if there was not a scene at the specified file path
+pub fn try_load_scene(scene_path: &str) -> Result<PackedScene, String> {
+    if let Some(scene) = ResourceLoader::godot_singleton().load(
+        GodotString::from_str(format!("res://scenes/{}.tscn", scene_path)),
+        GodotString::from_str("PackedScene"),
+        false,
+    ) {
+        if let Some(scene) = scene.cast::<PackedScene>() {
+            return Ok(scene);
+        } else {
+            return Err(format!("Could not cast {} to PackedScene", scene_path));
+        }
+    } else {
+        return Err(format!("Could not find {}", scene_path));
+    }
+}
+
+/// Takes a path to a scene prepends res://scenes/ and appends .tscn then attempts to load the scene
+///
+/// this path is CAPS SENSITIVE it is EXTREMELY important that your scenes folder is ALL lowercase and your specified path is correctly cased or else it WILL NOT WORK ON LINUX
+/// 
+/// # Panics
+/// 
+/// This can panic if there was not a scene at the specified file path
+pub fn load_scene(scene_path: &str) -> PackedScene {
+    match try_load_scene(scene_path) {
+        Err(e) => panic!(e),
+        Ok(template) => template,
     }
 }

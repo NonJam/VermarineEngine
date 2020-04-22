@@ -41,8 +41,8 @@ impl State for BaseState {
 
     fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
         // Add a base printer
-        let sender = resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
-        (*sender).inner.try_send(Box::from(|| Trans::Push(Box::new(PrintState { output: String::from("Bottom of stack") })))).ok();
+        let sender = resources.get::<TransResource>().unwrap();
+        sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PrintState { output: String::from("Bottom of stack") })))).ok();
     }
 
     fn is_node(&mut self, data: &mut StateData, resources: &mut Resources) -> Option<usize> {
@@ -63,11 +63,11 @@ pub struct PrintState {
 
 impl State for PrintState {
     fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
-        let sender = resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
+        let sender = resources.get::<TransResource>().unwrap();
         if let Some(mut res) = resources.get_mut::<TextResource>() {
             if res.input != "" {
                 let blah = res.input.clone();
-                (*sender).inner.try_send(Box::from(move || Trans::Push(Box::new(PrintState { output: String::from(blah) })))).ok();
+                sender.trans.try_send(Box::from(move || Trans::Push(Box::new(PrintState { output: String::from(blah) })))).ok();
             }
         }
     }
@@ -75,8 +75,8 @@ impl State for PrintState {
     fn shadow_update(&mut self, data: &mut StateData, resources: &mut Resources) {
         if let Some(pop_input) = resources.get::<PopInput>() {
             if pop_input.inner {
-                let sender = resources.get::<Wrapper<crossbeam_channel::Sender<Box<(dyn FnOnce() -> Trans + 'static)>>>>().unwrap();
-                (*sender).inner.try_send(Box::from(|| Trans::Pop));
+                let sender = resources.get::<TransResource>().unwrap();
+                sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
             }
         }
         resources.insert::<>(PopInput { inner: false });
