@@ -32,7 +32,7 @@
 //!     let mut instance = HelloWorld { engine: VermarineEngine::<Renderables>::new(owner) };
 //!
 //!     // This is usually where we would add our initial state to the stack and insert any Resources
-//!     // However since we're focussing on initial project setup we'll come back to this later
+//!     // However since we're focusing on initial project setup we'll come back to this later
 //!     // --snip
 //! 
 //!     instance
