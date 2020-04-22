@@ -169,7 +169,7 @@ impl<T> VermarineEngine<T>
     /// Pops all the states off the stack without calling on_uncover.
     /// This means that calling new_stack is NOT the same as popping all of the states as new_stack does not allow any of the states to run code when they are popped.
     /// Then calls push() for each of the states passed in
-    pub fn new_stack(&mut self, mut states: Vec<Box<dyn State>>) {
+    pub fn new_stack(&mut self, states: Vec<Box<dyn State>>) {
         while let Some(mut popped) = self.states.pop() {
             popped.1.on_pop(&mut popped.0, &mut self.resources);
         }

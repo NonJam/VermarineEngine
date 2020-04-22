@@ -39,13 +39,13 @@ impl State for BaseState {
         }
     }
 
-    fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn on_push(&mut self, _data: &mut StateData, resources: &mut Resources) {
         // Add a base printer
         let sender = resources.get::<TransResource>().unwrap();
         sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PrintState { output: String::from("Bottom of stack") })))).ok();
     }
 
-    fn is_node(&mut self, data: &mut StateData, resources: &mut Resources) -> Option<usize> {
+    fn is_node(&mut self, _data: &mut StateData, resources: &mut Resources) -> Option<usize> {
         // UI instancing
         let renderables = resources.get::<Models<Renderables>>().unwrap();
         let ui = renderables.data_from_t(&Renderables::UI(Ui::Main)).unwrap();
@@ -62,9 +62,9 @@ pub struct PrintState {
 }
 
 impl State for PrintState {
-    fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn update(&mut self, _data: &mut StateData, resources: &mut Resources) {
         let sender = resources.get::<TransResource>().unwrap();
-        if let Some(mut res) = resources.get_mut::<TextResource>() {
+        if let Some(res) = resources.get::<TextResource>() {
             if res.input != "" {
                 let blah = res.input.clone();
                 sender.trans.try_send(Box::from(move || Trans::Push(Box::new(PrintState { output: String::from(blah) })))).ok();
@@ -72,7 +72,7 @@ impl State for PrintState {
         }
     }
 
-    fn shadow_update(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn shadow_update(&mut self, _data: &mut StateData, resources: &mut Resources) {
         if let Some(pop_input) = resources.get::<PopInput>() {
             if pop_input.inner {
                 let sender = resources.get::<TransResource>().unwrap();
@@ -82,11 +82,11 @@ impl State for PrintState {
         resources.insert::<>(PopInput { inner: false });
     }
 
-    fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn on_push(&mut self, _data: &mut StateData, resources: &mut Resources) {
         resources.insert::<>(TextResource { display: String::from(self.output.clone()), input: String::from("") });
     }
 
-    fn on_uncover(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn on_uncover(&mut self, _data: &mut StateData, resources: &mut Resources) {
         resources.insert::<>(TextResource { display: String::from(self.output.clone()), input: String::from("") });
     }
 

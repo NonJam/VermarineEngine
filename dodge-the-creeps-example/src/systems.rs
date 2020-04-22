@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::collections::HashMap;
 
 pub fn create_systems() -> Vec<Box<dyn Schedulable>> {
     vec![
@@ -11,11 +10,14 @@ pub fn create_systems() -> Vec<Box<dyn Schedulable>> {
 }
 
 pub(crate) fn input_system() -> Box<dyn Schedulable> {
+    type Query1 = (Read<TakesInput>, Write<Velocity>);
+    type Query2 = (Read<TakesInput>, Read<Velocity>, Write<Renderable>);
     SystemBuilder::<()>::new("InputSystem")
         .write_component::<Renderable>()
-        .with_query(<(Read<TakesInput>, Write<Velocity>)>::query())
+        .with_query(<Query1>::query())
+        .with_query(<Query2>::query())
         .build(move |_commands, world, _resource, queries| {
-            for (entity, (takes_input, mut vel)) in queries.iter_entities_mut(&mut *world) {
+            for (takes_input, mut vel) in queries.0.iter_mut(&mut *world) {
                 vel.x = 0f32;
                 vel.y = 0f32;
 
@@ -41,22 +43,22 @@ pub(crate) fn input_system() -> Box<dyn Schedulable> {
                     vel.x = vec.x;
                     vel.y = vec.y;
                 }
+            }
 
-                if let Some(mut renderable) = world.get_component_mut::<Renderable>(entity) {
-                    if let Template::ASprite(mut a_sprite) = renderable.template {
-                        a_sprite.playing = true;
-                        if i_x != 0i32 {
-                            a_sprite.animation = "right";
-                            a_sprite.flip_v = false;
-                            a_sprite.flip_h = i_x < 0i32;
-                        } else if i_y != 0i32 {
-                            a_sprite.animation = "up";
-                            a_sprite.flip_v = i_y > 0i32;
-                        } else {
-                            a_sprite.playing = false;
-                        }
-                        renderable.template = Template::ASprite(a_sprite)
+            for (_, vel, mut renderable) in queries.1.iter_mut(&mut *world) {
+                if let Template::ASprite(mut a_sprite) = renderable.template {
+                    a_sprite.playing = true;
+                    if vel.x != 0f32 {
+                        a_sprite.animation = "right";
+                        a_sprite.flip_v = false;
+                        a_sprite.flip_h = vel.x < 0f32;
+                    } else if vel.y != 0f32 {
+                        a_sprite.animation = "up";
+                        a_sprite.flip_v = vel.y > 0f32;
+                    } else {
+                        a_sprite.playing = false;
                     }
+                    renderable.template = Template::ASprite(a_sprite)
                 }
             }
         })
@@ -153,8 +155,8 @@ pub(crate) fn collider_system() -> Box<dyn Schedulable> {
         .with_query(<(Read<Position>, Read<Collider>, Read<PlayerComp>)>::query())
         .build(move |_commands, world, _resource, queries| {
             
-            for (_entity, (pos, col, _)) in queries.0.iter_entities(&mut *world) {
-                for (_entity2, (pos2, col2, _)) in queries.1.iter_entities(&mut *world) {
+            for (_entity, (pos, col, _)) in queries.0.iter_entities(&world) {
+                for (_entity2, (pos2, col2, _)) in queries.1.iter_entities(&world) {
                     let rot = euclid::Rotation2D::<f32, euclid::UnknownUnit, euclid::UnknownUnit>::new(pos.rotation);
                     let mut a1 = rot.transform_vector(euclid::Vector2D::<f32, euclid::UnknownUnit>::new(
                         col.offset_x, 
