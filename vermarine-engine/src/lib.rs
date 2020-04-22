@@ -29,7 +29,7 @@
 //! 5. Fix your _init(_owner: Node) method! Our struct has a variable in it now so we need to set that.
 //! ```
 //! fn _init(owner: Node) -> Self {
-//!     let mut instance = SceneExampleInstance { engine: VermarineEngine::<Renderables>::new(owner) };
+//!     let mut instance = HelloWorld { engine: VermarineEngine::<Renderables>::new(owner) };
 //!
 //!     // This is usually where we would add our initial state to the stack and insert any Resources
 //!     // However since we're focussing on initial project setup we'll come back to this later
