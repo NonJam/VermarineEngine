@@ -25,6 +25,7 @@
 //! }
 //! ```
 //! for now don't worry about the <Renderables>, we'll get to that later
+//! 
 //! 5. Fix your _init(_owner: Node) method! Our struct has a variable in it now so we need to set that.
 //! ```
 //! fn _init(owner: Node) -> Self {
@@ -70,7 +71,7 @@
 //! }
 //! ```
 //! In this example state we implement the update method which only gets called when the state is at the top of the stack.
-//! Inside the update method we access some data specific to our state, print it to godots console and then increment it by one.
+//! Inside the update method we access some data specific to our state, print it to godot's console and then increment it by one.
 //! 
 //! If you try to run your project now you'll probably find that nothing happens!
 //! This is because we need to push the state onto the stack so that the engine can call its methods.
