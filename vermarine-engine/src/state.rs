@@ -45,7 +45,9 @@ impl Debug for Trans {
 
 pub struct StateData {
     pub(crate) receiver: crossbeam_channel::Receiver<legion::event::Event>,
-    pub(crate) node: Option<Node>,
+    pub(crate) rootnode: Option<Node>,
+    pub(crate) containernode: Option<Node>,
+    pub statenode: Option<Node>,
     pub(crate) node_lookup: HashMap<Entity, Node>,
     pub world: LWorld,
 }
@@ -57,17 +59,21 @@ impl<'a> StateData {
         StateData { 
             world,
             receiver,
-            node: None,
+            rootnode: None,
+            containernode: None,
+            statenode: None,
             node_lookup: HashMap::new(),
         }
     }
 }
 
 pub trait State {
+    fn is_node(&mut self, _data: &mut StateData, _resources: &mut Resources) -> Option<usize> { None }
     fn on_push(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
     fn on_pop(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
     fn on_cover(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
     fn on_uncover(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
     fn update(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
     fn shadow_update(&mut self, _data: &mut StateData, _resources: &mut Resources) { }
+    fn get_name(&mut self, _data: &mut StateData, _resources: &mut Resources) -> String { String::from("UnnamedState") }
 }

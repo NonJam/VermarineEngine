@@ -76,14 +76,15 @@ impl<T> RPopsEngine<T>
             }
         }
 
+        // Run a transition if one was sent
         if let Ok(trans) = self.trans_receiver.try_recv() {
             let trans = trans();
             self.run_state_trans(trans);
         }
 
+        // Sync the top of the stack's state to godot
         let state_len = self.states.len();
         let state = self.states.get_mut(state_len - 1).unwrap();
-
         sync_state_to_godot::<T>(&mut self.resources, state);
     }
 
@@ -104,22 +105,42 @@ impl<T> RPopsEngine<T>
     }
 
     pub fn push(&mut self, mut state: Box<dyn State>) {
+        // Send on_cover event to current top of stack if there is one
         let state_len = self.states.len();
         if state_len >= 1 {
             let state = self.states.get_mut(state_len - 1).unwrap();
             state.1.on_cover(&mut state.0, &mut self.resources);
         }
 
+        // Create new world
         let world = self.universe.create_world();
         let mut data = StateData::new(world);
 
-        let mut node = Node::new();
         unsafe {
-        node.set_name(GodotString::from_str("StateNode"));
-        self.owner.add_child(Some(node), true);
-        data.node = Some(node);
+            // Create rootnode
+            let mut rootnode = Node::new();
+            rootnode.set_name(GodotString::from_str(format!("State{}: {}", state_len, state.get_name(&mut data, &mut self.resources))));
+            self.owner.add_child(Some(rootnode), true);
+            data.rootnode = Some(rootnode);
+
+            // Create containernode
+            let mut containernode = Node::new();
+            containernode.set_name(GodotString::from_str("RenderablesContainer"));
+            data.rootnode.unwrap().add_child(Some(containernode), true);
+            data.containernode = Some(containernode);
+
+            // Create statenode
+            if let Some(index) = state.is_node(&mut data, &mut self.resources) {
+                let models = self.resources.get::<Models<T>>().unwrap();
+                if let Some(packed_scene) = (*models).scene_from_index(index) {
+                    let instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
+                    rootnode.add_child(Some(instance), true);
+                    data.statenode = Some(instance);
+                }
+            }
         }
 
+        // Actually push state onto the stack
         state.on_push(&mut data, &mut self.resources);
         self.states.push((data, state));
     }
@@ -130,7 +151,7 @@ impl<T> RPopsEngine<T>
         if let Some(state) = self.states.last_mut() {            
             state.1.on_pop(&mut state.0, &mut self.resources);
 
-            if let Some(node) = state.0.node {
+            if let Some(node) = state.0.rootnode {
                 unsafe { node.free(); }
             }
 
@@ -210,7 +231,7 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                                     unsafe {
                                         let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
                                         instance.set_name(GodotString::from_str("Node"));
-                                        state.0.node.unwrap().add_child(Some(instance), true);
+                                        state.0.containernode.unwrap().add_child(Some(instance), true);
                                         state.0.node_lookup.insert(e, instance);
                                         godot_print!("Started syncing from entity: {:?} to node", e.index());   
                                     }
