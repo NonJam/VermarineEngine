@@ -7,7 +7,7 @@
 //! In order to transition between different states on the stack there is a Trans enum to select which of the transitions to perform.
 //! 
 //! ### Getting your project setup
-//! 1. Create a new crate and follow the godot-rust setup instructions https://github.com/GodotNativeTools/godot-rust
+//! 1. Create a new crate and follow the godot-rust setup instructions https://github.com/GodotNativeTools/godot-rust until you have a working HelloWorld project
 //! 2. Add vermarine-engine to your dependencies in cargo.toml
 //! ```
 //! [dependencies]
