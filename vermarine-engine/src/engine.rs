@@ -104,6 +104,9 @@ impl<T> RPopsEngine<T>
         }
     }
 
+    /// Calls the on_cover method of the state at the top of the stack,
+    /// then calls the on_push method of the passed in state,
+    /// then pushes the passed in state onto the state stack.
     pub fn push(&mut self, mut state: Box<dyn State>) {
         // Send on_cover event to current top of stack if there is one
         let state_len = self.states.len();
@@ -145,8 +148,11 @@ impl<T> RPopsEngine<T>
         self.states.push((data, state));
     }
 
+    /// Calls the on_pop method of the state at the top of the stack,
+    /// then calls the on_uncover method of the state below the state at the top of the stack,
+    /// then pops the state at the top of the stack.
     pub fn pop(&mut self) {
-        let state_len = self.states.len() * 1;
+        let state_len = self.states.len();
 
         if let Some(state) = self.states.last_mut() {            
             state.1.on_pop(&mut state.0, &mut self.resources);
@@ -163,25 +169,33 @@ impl<T> RPopsEngine<T>
         }
     }
 
+    /// Swaps the topmost state with the passed in state.
+    /// This is equivelent to calling pop then push.
     pub fn switch(&mut self, state: Box<dyn State>) {
         self.pop();
         self.push(state);
     }
 
+    /// Replaces the entire stack with the passed in state.
+    /// This is equivelent to calling new_stack() with only one state.
     pub fn replace(&mut self, state: Box<dyn State>) {
         self.new_stack(vec![state]);
     }
 
+    /// Pops all the states off the stack without calling on_uncover.
+    /// This means that calling new_stack is NOT the same as popping all of the states as new_stack does not allow any of the states to run code when they are popped.
+    /// Then calls push() for each of the states passed in
     pub fn new_stack(&mut self, mut states: Vec<Box<dyn State>>) {
         while let Some(mut popped) = self.states.pop() {
             popped.1.on_pop(&mut popped.0, &mut self.resources);
         }
 
-        while let Some(popped) = states.pop() {
-            self.push(popped);
+        for state in states.into_iter() {
+            self.push(state);
         }
     }
 
+    /// Executes a set of Trans in sequential order
     pub fn sequence(&mut self, sequence: Vec<Trans>) {
         for trans in sequence.into_iter() {
             self.run_state_trans(trans);
