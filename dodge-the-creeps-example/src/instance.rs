@@ -3,13 +3,13 @@ use crate::prelude::*;
 #[derive(NativeClass)]
 #[inherit(Node)]
 pub struct DodgeTheCreepsInstance {
-    engine: RPopsEngine<Renderables>,
+    engine: VermarineEngine<Renderables>,
 }
 
 #[methods]
 impl DodgeTheCreepsInstance {
     fn _init(owner: Node) -> Self {
-        let mut instance = DodgeTheCreepsInstance { engine: RPopsEngine::<Renderables>::new(owner) };
+        let mut instance = DodgeTheCreepsInstance { engine: VermarineEngine::<Renderables>::new(owner) };
         
         // Add resources
         let renderables = Models::<Renderables>::default();

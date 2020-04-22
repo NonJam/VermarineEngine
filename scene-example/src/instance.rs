@@ -3,13 +3,13 @@ use crate::prelude::*;
 #[derive(NativeClass)]
 #[inherit(Node)]
 pub struct SceneExampleInstance {
-    engine: RPopsEngine<Renderables>,
+    engine: VermarineEngine<Renderables>,
 }
 
 #[methods]
 impl SceneExampleInstance {
     fn _init(owner: Node) -> Self {
-        let mut instance = SceneExampleInstance { engine: RPopsEngine::<Renderables>::new(owner) };
+        let mut instance = SceneExampleInstance { engine: VermarineEngine::<Renderables>::new(owner) };
 
         // Add resources
         let renderables = Models::<Renderables>::default();
@@ -20,13 +20,12 @@ impl SceneExampleInstance {
     }
 
     #[export]
-    fn _ready(&mut self, _owner: Node) {
-        self.engine._ready(_owner);
+    fn _ready(&mut self, owner: Node) {
+        self.engine._ready(owner);
     }
 
     #[export]
     fn _physics_process(&mut self, owner: Node, delta: f64) {
-
         self.engine._physics_process(owner, delta);
     }
 }

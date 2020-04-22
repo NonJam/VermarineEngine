@@ -14,7 +14,7 @@ pub struct Wrapper<T> {
 unsafe impl<T> Sync for Wrapper<T> {}
 unsafe impl<T> Send for Wrapper<T> {}
 
-pub struct RPopsEngine<T> where 
+pub struct VermarineEngine<T> where 
     T: Eq + std::hash::Hash + 'static {
     universe: Universe,
     states: Vec<(StateData, Box<dyn State>)>,
@@ -24,7 +24,7 @@ pub struct RPopsEngine<T> where
     phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> RPopsEngine<T> 
+impl<T> VermarineEngine<T> 
     where 
     T: Eq + std::hash::Hash + 'static {
     pub fn new(owner: Node) -> Self {
@@ -33,7 +33,7 @@ impl<T> RPopsEngine<T>
         let (sender, receiver) = crossbeam_channel::bounded(1);
         resources.insert::<>(TransResource { trans: sender });
 
-        RPopsEngine {
+        VermarineEngine {
             universe,
             states: Vec::new(),
             resources,
