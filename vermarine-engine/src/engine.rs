@@ -27,21 +27,21 @@ use crate::prelude::*;
 /// 
 /// Example of sending inside of a system:
 /// ```
-///     SystemBuilder::<()>::new("ExampleSystem")
-///         .write_resource::<TransResource>()
-///         .build(move |commands, world, resources, queries| {
-///             // Sending a push
-///             resources.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-///         })
+/// SystemBuilder::<()>::new("ExampleSystem")
+///     .write_resource::<TransResource>()
+///     .build(move |commands, world, resources, queries| {
+///         // Sending a push
+///         resources.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
+///     })
 /// ```
 /// or for sending a pop
 /// ```
-///     SystemBuilder::<()>::new("ExampleSystem")
-///         .write_resource::<TransResource>()
-///         .build(move |commands, world, resources, queries| {
-///             // Sending a pop
-///             resources.trans.try_send(Box::from(|| Trans::Pop)).ok();
-///         })
+/// SystemBuilder::<()>::new("ExampleSystem")
+///     .write_resource::<TransResource>()
+///     .build(move |commands, world, resources, queries| {
+///         // Sending a pop
+///         resources.trans.try_send(Box::from(|| Trans::Pop)).ok();
+///     })
 /// ```
 /// If you attempt to send more than one Trans only the first one will be used
 pub struct TransResource {
