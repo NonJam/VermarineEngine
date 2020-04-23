@@ -323,50 +323,6 @@
 //! ```
 //! 
 //! If you run this now you should find that if you press pause the counter will stop printing out, the pause text will appear and if you hit pause again it will resume.
-//! 
-//! ### Writing to the TransResource
-//! When you have access to legion's resource set you can write to the TransResource.
-//! 
-//! The general places where you can do this are
-//! 1. Inside of one of the state methods. All of these methods give access to Resources mutably.
-//! 2. Inside of a system. Inside of a system you can access Resources mutably.
-//! 
-//! Example of sending inside of a state method:
-//! ```
-//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
-//!     // Sending a push
-//!     let sender = resources.get::<TransResource>().unwrap();
-//!     sender.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-//! }
-//! ```
-//! or for sending a pop
-//! ```
-//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
-//!     // Sending a pop
-//!     let sender = resources.get::<TransResource>().unwrap();
-//!     sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
-//! }
-//! ```
-//! 
-//! Example of sending inside of a system:
-//! ```
-//!     SystemBuilder::<()>::new("ExampleSystem")
-//!         .write_resource::<TransResource>()
-//!         .build(move |commands, world, resources, queries| {
-//!             // Sending a push
-//!             resources.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-//!         })
-//! ```
-//! or for sending a pop
-//! ```
-//!     SystemBuilder::<()>::new("ExampleSystem")
-//!         .write_resource::<TransResource>()
-//!         .build(move |commands, world, resources, queries| {
-//!             // Sending a pop
-//!             resources.trans.try_send(Box::from(|| Trans::Pop)).ok();
-//!         })
-//! ```
-//! If you attempt to send more than one Trans only the first one will be used
 
 mod engine;
 mod components;

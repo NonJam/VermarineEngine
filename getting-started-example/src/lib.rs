@@ -107,7 +107,7 @@ impl State for PauseState {
         );
     }
 
-    fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn update(&mut self, _data: &mut StateData, resources: &mut Resources) {
         if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
             // Get the TransResource that allows us to send state transitions to the engine
             let sender = resources.get::<TransResource>().unwrap();
