@@ -86,7 +86,7 @@
 //! 6.) get_name - This method is used in various debug information to identify a state and has no functional effect on the running of your state
 //! 
 //! 7.) is_node - This method is slightly more complicated to explain and deserves its own section so we'll only give a brief explanation here.
-//! is_node() is used to specify a Models<T> to instance alongside the state, it can be accessed via data.statenode (for example usage see BaseState's shadow_update and is_node methods in scene-example).
+//! is_node() is used to specify a Models\<T> to instance alongside the state, it can be accessed via data.statenode (for example usage see BaseState's shadow_update and is_node methods in scene-example).
 //! 
 //! If you try to run your project now you'll probably find that nothing happens!
 //! This is because we need to push the state onto the stack so that the engine can call its methods.
@@ -107,21 +107,21 @@
 //! 
 //! So now that we have a hello world setup and a state on the stack to run our code in you might be wondering "How do I get stuff on the screen?"
 //! 
-//! The answer goes back to the <i32> we saw when we setup VermarineEngine inside of our HelloWorld struct. Internally Vermarine draws to the screen by instancing
+//! The answer goes back to the \<i32> we saw when we setup VermarineEngine inside of our HelloWorld struct. Internally Vermarine draws to the screen by instancing
 //! scenes in godot and letting godot draw them for us, this means that we have to store a set of all the scenes we can instance in godot. Vermarine handles this
-//! by having a Models<T> resource (We'll get to what the T is for later). The generic that VermarineEngine takes is so that it knows what the T of your Models<T>
-//! resource is, this means that it's important that when you insert your Models<T> resource you set the T to be the same as whatever you set VermarineEngine<T> to.
+//! by having a Models\<T> resource (We'll get to what the T is for later). The generic that VermarineEngine takes is so that it knows what the T of your Models\<T>
+//! resource is, this means that it's important that when you insert your Models\<T> resource you set the T to be the same as whatever you set VermarineEngine\<T> to.
 //! 
-//! The actual use for the <T> in Models<T> is for a custom lookup of your model data. When you insert a model into Models<T> you'll be able to set some optional
-//! keys for your model so that you can access it again, the <T> is a generic that lets you pick a type for use as a key, the three ways to access your model
+//! The actual use for the \<T> in Models\<T> is for a custom lookup of your model data. When you insert a model into Models\<T> you'll be able to set some optional
+//! keys for your model so that you can access it again, the \<T> is a generic that lets you pick a type for use as a key, the three ways to access your model
 //! after inserting are:
 //! 
-//! -- NOTE: If you do not set Models<T> to the same T as VermarineEngine<T> the engine will not be able to find the Models<T> resource 
+//! -- NOTE: If you do not set Models\<T> to the same T as VermarineEngine\<T> the engine will not be able to find the Models\<T> resource 
 //! and as such nothing will get drawn.
 //! 
-//! 1. Looking up the model on the Models<T> resource with a key of type T
-//! 2. Looking up the model on the Models<T> resource with a key of type &'static str
-//! 3. Looking up the model on the Models<T> resource with a key of type usize
+//! 1. Looking up the model on the Models\<T> resource with a key of type T
+//! 2. Looking up the model on the Models\<T> resource with a key of type &'static str
+//! 3. Looking up the model on the Models\<T> resource with a key of type usize
 //! 
 //! the methods used for this are respectively:
 //! ```
@@ -133,9 +133,9 @@
 //! -- NOTE: the usize key is not specifiable on model insertion, the usize key is the index of your model inside of the underlying storage type of Models<T>,
 //! there are a few helper methods for retrieving this index from either of the other two keys.
 //! 
-//! Now that we know about the Models<T> resource let's get on with inserting it with some model data
+//! Now that we know about the Models\<T> resource let's get on with inserting it with some model data
 //! 
-//! 1. First thing we're going to do is create an instance of Models<T>
+//! 1. First thing we're going to do is create an instance of Models\<T>
 //! ```
 //! fn _init(owner: Node) -> Self {
 //!     let mut instance = HelloWorld { engine: VermarineEngine::<i32>::new(owner)};
@@ -151,9 +151,9 @@
 //! }
 //! ```
 //! 
-//! 2. Next up we need to insert some model data into our Models<T> resource so to do that let's go into our godot project and create a /scenes/ folder
+//! 2. Next up we need to insert some model data into our Models\<T> resource so to do that let's go into our godot project and create a /scenes/ folder
 //! 
-//! -- NOTE: It is important that this folder is named EXACTLY "scenes" and in all lowercase or the load_scene() calls to Models<T> will not find anything
+//! -- NOTE: It is important that this folder is named EXACTLY "scenes" and in all lowercase or the load_scene() calls to Models\<T> will not find anything
 //! 
 //! 3. Next lets create a new scene and call it "square", select 2D Scene as the root node and then add a Sprite node as a child of our root node.
 //! 
@@ -162,7 +162,7 @@
 //! 
 //! 5. Hit ctrl-s and then tab back into your editor of choice and lets load this scene into vermarine.
 //! 
-//! 6. To insert a scene into our Models<T> resource we need to call .insert() on our Models<T> like this:
+//! 6. To insert a scene into our Models\<T> resource we need to call .insert() on our Models\<T> like this:
 //! ```
 //! models.insert(alias: ..., t_key: ..., scene: ..., template: ...);
 //! ```
@@ -170,10 +170,10 @@
 //! 
 //! alias: This is the optional &'static str key that we talked about earlier, if you want to specify a key then pass in Some("Your key") if not then just pass in None.
 //! 
-//! t_key: This is the optional key for whatever T you specified in Models<T>, same syntax as alias if you want to specify a key then pass in
+//! t_key: This is the optional key for whatever T you specified in Models\<T>, same syntax as alias if you want to specify a key then pass in
 //! Some(/* instance of T here */) and if you dont want to specify a key then just pass in None
 //! 
-//! scene: This is the actual scene data we want to store in Models<T> to get this there's a function that will be available through the vermarine_engine::prelude::*; call.
+//! scene: This is the actual scene data we want to store in Models\<T> to get this there's a function that will be available through the vermarine_engine::prelude::*; call.
 //! You can either call load_scene() or try_load_scene(), try_load_scene will return an error if it could not find your scene wheras load_scene() will just call the panic macro.
 //! These functions take one argument, a string path to your scene, the path to our scene is res://scenes/square.tscn so we'll just pass in square. If your path was
 //! res://scenes/shapes/square.tscn we would pass in the path shapes/square.
@@ -201,7 +201,7 @@
 //! fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
 //! }
 //! ```
-//! The first thing we want to do is get the Models<T> resource:
+//! The first thing we want to do is get the Models\<T> resource:
 //! ```
 //! fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
 //!     let models = resources.get::<Models<i32>>().unwrap();
@@ -238,7 +238,7 @@
 //! GDSpatial is a component that marks our entity as one that needs to be instanced in godot aswell. This component won't do anything if you don't have a Renderable
 //! component on the entity aswell.
 //! 
-//! Renderable is a component that stores the usize key into Models<T> along with the Template.
+//! Renderable is a component that stores the usize key into Models\<T> along with the Template.
 //! 
 //! Position is fairly self explanatory but nevertheless, position stores the position of our entity and is what is used by the engine to set the position of GDSpatials
 //! 
@@ -262,7 +262,7 @@
 //! at the top of the UI that opens click on the Input Map tab, type "pause" into the action text box, hit the Add button on the right, click on the + button next
 //! to your action at the bottom and then select a key, I'll be using ESC. Now that we're done in godot lets head back to our code.
 //! 
-//! 3. Next lets load our scene into our Models<T> resource like we did with square, add this code to your _init() method
+//! 3. Next lets load our scene into our Models\<T> resource like we did with square, add this code to your _init() method
 //! ```models.insert(Some("Pause"), None, load_scene("pause"), Template::Scene);```
 //! 
 //! 4. Inside update make YourState check if the pause key was pressed and then send a Push transition to push PauseState onto the stack
@@ -303,7 +303,7 @@
 //! 7. In on_push we want to create an entity with the renderable set to our pause scene. This is pretty quickly done by copy pasting our on_push method from
 //! YourState and then making some small tweaks (changes annotated):
 //! ```
-//! // Retrieve our data from Models<T>
+//! // Retrieve our data from Models\<T>
 //! let models = resources.get::<Models<i32>>().unwrap();
 //! // Changed variable name to pause and set the Key to "Pause"
 //! let pause = models.data_from_alias("Pause").unwrap();
