@@ -1,10 +1,7 @@
 //! Vermarine is a game engine written in rust that attempts to use godot-rust to cut down on engine work while still retaining the performance and safety of rust
 //! 
-//! # General Overview of how to use Vermarine
-//! The core of vermarine revolves around the state stack and legion ecs.
-//! 
-//! Each state has various methods that can be optionally implemented that will be automatically called from the engine once pushed to the stack.
-//! In order to transition between different states on the stack there is a Trans enum to select which of the transitions to perform.
+//! # Getting started tutorial
+//! This tutorial goes from an empty folder to a basic wasd movement setup with a pause menu
 //! 
 //! ### Getting your project setup
 //! 1. Create a new crate and follow the godot-rust setup instructions https://github.com/GodotNativeTools/godot-rust until you have a working HelloWorld project
@@ -270,12 +267,12 @@
 //! 
 //! 4. Inside update make YourState check if the pause key was pressed and then send a Push transition to push PauseState onto the stack
 //! ```
-//!     if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
-//!         // Get the TransResource that allows us to send state transitions to the engine
-//!         let sender = resources.get::<TransResource>().unwrap();
-//!         // Send a closure that creates the Trans we want to execute
-//!         sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PauseState { }))).ok();
-//!     }
+//! if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
+//!     // Get the TransResource that allows us to send state transitions to the engine
+//!     let sender = resources.get::<TransResource>().unwrap();
+//!     // Send a closure that creates the Trans we want to execute
+//!     sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PauseState { }))).ok();
+//! }
 //! ```
 //! 
 //! 5. Create a new state called PauseState that implements on_push and update
@@ -295,12 +292,12 @@
 //! 
 //! 6. In update check if "pause" key is pressed and send a Pop transition if it is
 //! ```
-//!     if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
-//!         // Get the TransResource that allows us to send state transitions to the engine
-//!         let sender = resources.get::<TransResource>().unwrap();
-//!         // Send a closure that creates the Trans we want to execute
-//!         sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
-//!     }
+//! if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
+//!     // Get the TransResource that allows us to send state transitions to the engine
+//!     let sender = resources.get::<TransResource>().unwrap();
+//!     // Send a closure that creates the Trans we want to execute
+//!     sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
+//! }
 //! ```
 //! 
 //! 7. In on_push we want to create an entity with the renderable set to our pause scene. This is pretty quickly done by copy pasting our on_push method from
