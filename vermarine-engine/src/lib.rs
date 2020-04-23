@@ -73,6 +73,24 @@
 //! In this example state we implement the update method which only gets called when the state is at the top of the stack.
 //! Inside the update method we access some data specific to our state, print it to godot's console and then increment it by one.
 //! 
+//! There are a few other methods you can implement on your state, we won't go into too much detail here as they have more in depth
+//! explanations in their own documentation.
+//! 
+//! 1.) shadow_update - This method gets called on a state when it is not on the top of the stack
+//! 
+//! 2.) on_cover - This method gets called on a state when another state is pushed over it
+//! 
+//! 3.) on_push - This method gets called on a state when it is pushed onto the stack
+//! 
+//! 4.) on_uncover - This method gets called on a state when the state ontop of it in the stack is popped
+//! 
+//! 5.) on_pop - This method gets called on a state when it is popped off of the stack
+//! 
+//! 6.) get_name - This method is used in various debug information to identify a state and has no functional effect on the running of your state
+//! 
+//! 7.) is_node - This method is slightly more complicated to explain and deserves its own section so we'll only give a brief explanation here.
+//! is_node() is used to specify a Models<T> to instance alongside the state, it can be accessed via data.statenode (for example usage see BaseState's shadow_update and is_node methods in scene-example).
+//! 
 //! If you try to run your project now you'll probably find that nothing happens!
 //! This is because we need to push the state onto the stack so that the engine can call its methods.
 //! To do this we will need to add some code to our init method in our rust native script class that we made in the last section
@@ -86,70 +104,7 @@
 //!     instance
 //! }
 //! ```
-//! 
-//! There are a few other methods you can implement on your state, we won't go into too much detail here as they have more in depth
-//! explanations in their own documentation.
-//! 
-//! 1.) update - This method gets called on a state when it is on the top of the stack
-//! 
-//! 2.) shadow_update - This method gets called on a state when it is not on the top of the stack
-//! 
-//! 3.) on_cover - This method gets called on a state when another state is pushed over it
-//! 
-//! 4.) on_push - This method gets called on a state when it is pushed onto the stack
-//! 
-//! 5.) on_uncover - This method gets called on a state when the state ontop of it in the stack is popped
-//! 
-//! 6.) on_pop - This method gets called on a state when it is popped off of the stack
-//! 
-//! 7.) get_name - This method is used in various debug information to identify a state and has no functional effect on the running of your state
-//! 
-//! 8.) is_node - This method is slightly more complicated to explain and deserves its own section so we'll only give a brief explanation here.
-//! is_node() is used to specify a Models<T> to instance alongside the state, it can be accessed via data.statenode (for example usage see BaseState's shadow_update and is_node methods in scene-example).
-//! 
-//! ### Writing to the TransResource
-//! When you have access to legion's resource set you can write to the TransResource.
-//! 
-//! The general places where you can do this are
-//! 1. Inside of one of the state methods. All of these methods give access to Resources mutably.
-//! 2. Inside of a system. Inside of a system you can access Resources mutably.
-//! 
-//! Example of sending inside of a state method:
-//! ```
-//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
-//!     // Sending a push
-//!     let sender = resources.get::<TransResource>().unwrap();
-//!     sender.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-//! }
-//! ```
-//! or for sending a pop
-//! ```
-//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
-//!     // Sending a pop
-//!     let sender = resources.get::<TransResource>().unwrap();
-//!     sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
-//! }
-//! ```
-//! 
-//! Example of sending inside of a system:
-//! ```
-//!     SystemBuilder::<()>::new("ExampleSystem")
-//!         .write_resource::<TransResource>()
-//!         .build(move |commands, world, resources, queries| {
-//!             // Sending a push
-//!             resources.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
-//!         })
-//! ```
-//! or for sending a pop
-//! ```
-//!     SystemBuilder::<()>::new("ExampleSystem")
-//!         .write_resource::<TransResource>()
-//!         .build(move |commands, world, resources, queries| {
-//!             // Sending a pop
-//!             resources.trans.try_send(Box::from(|| Trans::Pop)).ok();
-//!         })
-//! ```
-//! If you attempt to send more than one Trans only the first one will be used
+//! We'll go into more detail about the stack later on.
 //! 
 //! ### How to get things rendering
 //! 
@@ -291,6 +246,130 @@
 //! Position is fairly self explanatory but nevertheless, position stores the position of our entity and is what is used by the engine to set the position of GDSpatials
 //! 
 //! 8...  That's us done! If you play the game you'll see your square.tscn at whatever position specified in the Position component
+//! 
+//! ### Setting up state transitions
+//! 
+//! One of the big things you can do with vermarine is swap states around for loading levels, pausing the game etc. So in this section we'll be adding pause functionality
+//! to our counter by adding a pause menu.
+//! 
+//! The way we'll do this is by having YourState check for the pause button being pressed in update and if it detects it push PauseState onto the stack.
+//! Then in PauseState we'll check for the pause button being pressed in update and if it it detects it pop the stack to return back to YourState.
+//! 
+//! 1. Lets start off by making a new scene in godot that will show some text saying "Game is paused press ESC to unpause".
+//! 
+//! As with square.tscn we should place this scene in /scenes/ I called my scene "pause". Once you've created your new scene add a child node of type RichTextLabel
+//! then click it, go to the inspector on the right and add to the text box whatever you want it to say. Feel free to set the size of your text box and move it around
+//! until you're happy with how it looks, once we're done with that let's head back into our code.
+//! 
+//! 2. Finally before heading back to our code lets add the keybinds for pausing/unpausing. At the top left of godot go to Project>Project Settings and then
+//! at the top of the UI that opens click on the Input Map tab, type "pause" into the action text box, hit the Add button on the right, click on the + button next
+//! to your action at the bottom and then select a key, I'll be using ESC. Now that we're done in godot lets head back to our code.
+//! 
+//! 3. Next lets load our scene into our Models<T> resource like we did with square, add this code to your _init() method
+//! ```models.insert(Some("Pause"), None, load_scene("pause"), Template::Scene);```
+//! 
+//! 4. Inside update make YourState check if the pause key was pressed and then send a Push transition to push PauseState onto the stack
+//! ```
+//!     if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
+//!         // Get the TransResource that allows us to send state transitions to the engine
+//!         let sender = resources.get::<TransResource>().unwrap();
+//!         // Send a closure that creates the Trans we want to execute
+//!         sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PauseState { }))).ok();
+//!     }
+//! ```
+//! 
+//! 5. Create a new state called PauseState that implements on_push and update
+//! ```
+//! pub struct PauseState { }
+//! 
+//! impl State for PauseState {
+//!     fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
+//!
+//!     }
+//!
+//!     fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+//!
+//!     }
+//! }
+//! ```
+//! 
+//! 6. In update check if "pause" key is pressed and send a Pop transition if it is
+//! ```
+//!     if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
+//!         // Get the TransResource that allows us to send state transitions to the engine
+//!         let sender = resources.get::<TransResource>().unwrap();
+//!         // Send a closure that creates the Trans we want to execute
+//!         sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
+//!     }
+//! ```
+//! 
+//! 7. In on_push we want to create an entity with the renderable set to our pause scene. This is pretty quickly done by copy pasting our on_push method from
+//! YourState and then making some small tweaks (changes annotated):
+//! ```
+//! // Retrieve our data from Models<T>
+//! let models = resources.get::<Models<i32>>().unwrap();
+//! // Changed variable name to pause and set the Key to "Pause"
+//! let pause = models.data_from_alias("Pause").unwrap();
+//! 
+//! // Insert adds an entity to the world
+//! data.world.insert(
+//!     (),
+//!     (0..1).map(|_| (
+//!         // What components we want our entity to have
+//!         GDSpatial,
+//!         // Changed to use the pause variable not square variable
+//!         Renderable { index: pause.1, template: pause.0 },
+//!         // Set position to 0,0 not 150,150
+//!         Position::new(0f32, 0f32),
+//!     ))
+//! );
+//! ```
+//! 
+//! If you run this now you should find that if you press pause the counter will stop printing out, the pause text will appear and if you hit pause again it will resume.
+//! 
+//! ### Writing to the TransResource
+//! When you have access to legion's resource set you can write to the TransResource.
+//! 
+//! The general places where you can do this are
+//! 1. Inside of one of the state methods. All of these methods give access to Resources mutably.
+//! 2. Inside of a system. Inside of a system you can access Resources mutably.
+//! 
+//! Example of sending inside of a state method:
+//! ```
+//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+//!     // Sending a push
+//!     let sender = resources.get::<TransResource>().unwrap();
+//!     sender.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
+//! }
+//! ```
+//! or for sending a pop
+//! ```
+//! fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+//!     // Sending a pop
+//!     let sender = resources.get::<TransResource>().unwrap();
+//!     sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
+//! }
+//! ```
+//! 
+//! Example of sending inside of a system:
+//! ```
+//!     SystemBuilder::<()>::new("ExampleSystem")
+//!         .write_resource::<TransResource>()
+//!         .build(move |commands, world, resources, queries| {
+//!             // Sending a push
+//!             resources.trans.try_send(Box::from(|| Trans::Push(Box::new( /* State goes here */ )))).ok();
+//!         })
+//! ```
+//! or for sending a pop
+//! ```
+//!     SystemBuilder::<()>::new("ExampleSystem")
+//!         .write_resource::<TransResource>()
+//!         .build(move |commands, world, resources, queries| {
+//!             // Sending a pop
+//!             resources.trans.try_send(Box::from(|| Trans::Pop)).ok();
+//!         })
+//! ```
+//! If you attempt to send more than one Trans only the first one will be used
 
 mod engine;
 mod components;

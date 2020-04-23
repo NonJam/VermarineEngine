@@ -20,6 +20,7 @@ impl HelloWorld {
         // Set up Models<T> resource
         let mut models = Models::<i32>::default();
         models.insert(Some("StringKey"), None, load_scene("square"), Template::Scene);
+        models.insert(Some("Pause"), None, load_scene("pause"), Template::Scene);
         instance.engine.resources.insert(models);
 
         instance.engine.push(Box::new(YourState { count: 0 }));
@@ -73,8 +74,45 @@ impl State for YourState {
         );
     }
 
-    fn update(&mut self, _data: &mut StateData, _resources: &mut Resources) {
+    fn update(&mut self, _data: &mut StateData, resources: &mut Resources) {
         godot_print!("{}", self.count);
-        self.count += 1
+        self.count += 1;
+
+        if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
+            // Get the TransResource that allows us to send state transitions to the engine
+            let sender = resources.get::<TransResource>().unwrap();
+            // Send a closure that creates the Trans we want to execute
+            sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PauseState { })))).ok();
+        }
+    }
+}
+
+pub struct PauseState { }
+
+impl State for PauseState {
+    fn on_push(&mut self, data: &mut StateData, resources: &mut Resources) {
+        // Retrieve our data from Models<T>
+        let models = resources.get::<Models<i32>>().unwrap();
+        let pause = models.data_from_alias("Pause").unwrap();
+
+        // Insert adds an entity to the world
+        data.world.insert(
+            (),
+            (0..1).map(|_| (
+                // What components we want our entity to have
+                GDSpatial,
+                Renderable { index: pause.1, template: pause.0 },
+                Position::new(0f32, 0f32),
+            ))
+        );
+    }
+
+    fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+        if Input::godot_singleton().is_action_just_pressed(GodotString::from("pause")) {
+            // Get the TransResource that allows us to send state transitions to the engine
+            let sender = resources.get::<TransResource>().unwrap();
+            // Send a closure that creates the Trans we want to execute
+            sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
+        }
     }
 }

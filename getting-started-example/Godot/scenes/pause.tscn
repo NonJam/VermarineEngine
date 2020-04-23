@@ -1,0 +1,13 @@
+[gd_scene format=2]
+
+[node name="Node2D" type="Node2D"]
+
+[node name="RichTextLabel" type="RichTextLabel" parent="."]
+margin_left = 383.0
+margin_top = 112.0
+margin_right = 666.0
+margin_bottom = 152.0
+text = "Game is paused press ESC to unpause"
+__meta__ = {
+"_edit_use_anchors_": false
+}
