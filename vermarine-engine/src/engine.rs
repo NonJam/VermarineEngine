@@ -44,7 +44,7 @@ impl<T> VermarineEngine<T>
     }
 
     pub fn _ready(&mut self, _owner: Node) {
-        godot_print!("HelloWorld");
+        godot_print!("Vermarine: HelloWorld");
     }
 
     pub fn _physics_process(&mut self, _owner: Node, _delta: f64) {

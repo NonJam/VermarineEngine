@@ -2,7 +2,8 @@
 members = [
     "vermarine-engine",
     "dodge-the-creeps-example",
-    "scene-example"
+    "scene-example",
+    "getting-started-example"
 ]
 exclude = [
     "legion-ecs"

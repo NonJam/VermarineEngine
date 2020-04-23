@@ -7,6 +7,17 @@ pub struct Position {
     pub rotation: euclid::Angle::<f32>,
 }
 
+impl Position {
+    pub fn new(x: f32, y: f32) -> Self {
+        Position {
+            x: x,
+            y: y,
+            rotation: euclid::Angle::radians(0f32),
+        }
+    }
+}
+
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Renderable {
     pub index: usize,
