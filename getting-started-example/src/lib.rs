@@ -73,7 +73,7 @@ impl State for YourState {
         );
     }
 
-    fn update(&mut self, data: &mut StateData, resources: &mut Resources) {
+    fn update(&mut self, _data: &mut StateData, _resources: &mut Resources) {
         godot_print!("{}", self.count);
         self.count += 1
     }
