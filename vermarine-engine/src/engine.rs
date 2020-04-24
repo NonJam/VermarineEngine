@@ -143,13 +143,14 @@ impl<T> VermarineEngine<T>
         unsafe {
             // Create rootnode
             let mut rootnode = Node::new();
-            rootnode.set_name(GodotString::from_str(format!("State{}: {}", state_len, state.get_name(&mut data, &mut self.resources))));
+            let name = state.get_name(&mut data, &mut self.resources);
+            rootnode.set_name(format!("State{}: {}", state_len, name).into());
             self.owner.add_child(Some(rootnode), true);
             data.rootnode = Some(rootnode);
 
             // Create containernode
             let mut containernode = Node::new();
-            containernode.set_name(GodotString::from_str("RenderablesContainer"));
+            containernode.set_name("RenderablesContainer".into());
             data.rootnode.unwrap().add_child(Some(containernode), true);
             data.containernode = Some(containernode);
 
@@ -262,7 +263,7 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                                 if let Some(packed_scene) = (*models).scene_from_index(renderable.index) {
                                     unsafe {
                                         let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
-                                        instance.set_name(GodotString::from_str("Node"));
+                                        instance.set_name("Node".into());
                                         state.0.containernode.unwrap().add_child(Some(instance), true);
                                         state.0.node_lookup.insert(e, instance);
                                         godot_print!("Started syncing from entity: {:?} to node", e.index());   
