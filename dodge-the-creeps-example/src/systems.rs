@@ -153,10 +153,10 @@ pub(crate) fn collider_system() -> Box<dyn Schedulable> {
         .read_component::<EnemyComp>()
         .with_query(<(Read<Position>, Read<Collider>, Read<EnemyComp>)>::query())
         .with_query(<(Read<Position>, Read<Collider>, Read<PlayerComp>)>::query())
-        .build(move |_commands, world, _resource, queries| {
+        .build(move |_commands, world, _resource, (enemy_set, player_set)| {
             
-            for (_entity, (pos, col, _)) in queries.0.iter_entities(&world) {
-                for (_entity2, (pos2, col2, _)) in queries.1.iter_entities(&world) {
+            for (_entity, (pos, col, _)) in enemy_set.iter_entities(&world) {
+                for (_entity2, (pos2, col2, _)) in player_set.iter_entities(&world) {
                     let rot = euclid::Rotation2D::<f32, euclid::UnknownUnit, euclid::UnknownUnit>::new(pos.rotation);
                     let mut a1 = rot.transform_vector(euclid::Vector2D::<f32, euclid::UnknownUnit>::new(
                         col.offset_x, 

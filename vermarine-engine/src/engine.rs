@@ -226,18 +226,15 @@ impl<T> VermarineEngine<T>
 
 pub(crate) fn get_animator<T>(node: Node) -> Option<T> 
     where T: GodotObject {
+    
     let mut i = 0;
-    loop {
-        if let Some(child_node) = unsafe { node.get_child(i) } {
-            if let Some(child_node) = unsafe { child_node.cast::<T>() } {
-                return Some(child_node);
-            }
-        } else {
-            return None;
+    while let Some(child_node) = unsafe { node.get_child(i) } {
+        if let Some(child_node) = unsafe { child_node.cast::<T>() } {
+            return Some(child_node);
         }
-
         i += 1;
     }
+    None
 }
 
 pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (StateData, Box<(dyn State)>)) 

@@ -16,14 +16,14 @@ pub struct BaseState {
 impl State for BaseState {
     fn shadow_update(&mut self, data: &mut StateData, resources: &mut Resources) {
         if let Some(mut res) = resources.get_mut::<TextResource>() {
-            let gdstring = GodotString::from_str(String::from(res.display.clone()));
+            let gdstring = res.display.clone().into();
             unsafe {
                 // Call shadow update on gdscript
                 // This sets the text to current display string
-                data.statenode.unwrap().call(GodotString::from_str("_shadow_update"), &[Variant::from_godot_string(&gdstring)]);
+                data.statenode.unwrap().call("_shadow_update".into(), &[Variant::from_godot_string(&gdstring)]);
 
                 // Get the current input string and update res.input if there is one
-                let returned = data.statenode.unwrap().call(GodotString::from_str("_get_text_input"), &[Variant::new(); 0]);
+                let returned = data.statenode.unwrap().call("_get_text_input".into(), &[Variant::new(); 0]);
                 if let Some(string) = returned.try_to_godot_string() {
                     res.input = string.to_string();
                 }
@@ -32,9 +32,9 @@ impl State for BaseState {
 
         // Pop the stack if pop button is pressed
         unsafe {
-            let returned = data.statenode.unwrap().call(GodotString::from_str("_get_pop_input"), &[Variant::new(); 0]);
+            let returned = data.statenode.unwrap().call("_get_pop_input".into(), &[Variant::new(); 0]);
             if let Some(b) = returned.try_to_bool() {
-                resources.insert::<>(PopInput { inner: b } );
+                resources.insert(PopInput { inner: b } );
            }
         }
     }
@@ -42,18 +42,18 @@ impl State for BaseState {
     fn on_push(&mut self, _data: &mut StateData, resources: &mut Resources) {
         // Add a base printer
         let sender = resources.get::<TransResource>().unwrap();
-        sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PrintState { output: String::from("Bottom of stack") })))).ok();
+        sender.trans.try_send(Box::from(|| Trans::Push(Box::new(PrintState { output: "Bottom of stack".into() })))).ok();
     }
 
     fn is_node(&mut self, _data: &mut StateData, resources: &mut Resources) -> Option<usize> {
         // UI instancing
         let renderables = resources.get::<Models<Renderables>>().unwrap();
-        let ui = renderables.data_from_t(&Renderables::UI(Ui::Main)).unwrap();
-        Some(ui.1)
+        let (_, index) = renderables.data_from_t(&Renderables::UI(Ui::Main)).unwrap();
+        Some(index)
     }
 
     fn get_name(&mut self, _: &mut StateData, _: &mut Resources) -> String {
-        String::from("Base")
+        "Base".into()
     }
 }
 
@@ -67,7 +67,7 @@ impl State for PrintState {
         if let Some(res) = resources.get::<TextResource>() {
             if res.input != "" {
                 let blah = res.input.clone();
-                sender.trans.try_send(Box::from(move || Trans::Push(Box::new(PrintState { output: String::from(blah) })))).ok();
+                sender.trans.try_send(Box::from(move || Trans::Push(Box::new(PrintState { output: blah })))).ok();
             }
         }
     }
@@ -79,18 +79,18 @@ impl State for PrintState {
                 sender.trans.try_send(Box::from(|| Trans::Pop)).ok();
             }
         }
-        resources.insert::<>(PopInput { inner: false });
+        resources.insert(PopInput { inner: false });
     }
 
     fn on_push(&mut self, _data: &mut StateData, resources: &mut Resources) {
-        resources.insert::<>(TextResource { display: String::from(self.output.clone()), input: String::from("") });
+        resources.insert(TextResource { display: self.output.clone(), input: "".into() });
     }
 
     fn on_uncover(&mut self, _data: &mut StateData, resources: &mut Resources) {
-        resources.insert::<>(TextResource { display: String::from(self.output.clone()), input: String::from("") });
+        resources.insert(TextResource { display: self.output.clone(), input: "".into() });
     }
 
     fn get_name(&mut self, _: &mut StateData, _: &mut Resources) -> String {
-        String::from("Printer")
+        "Printer".into()
     }
 }
