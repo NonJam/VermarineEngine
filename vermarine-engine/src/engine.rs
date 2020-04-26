@@ -105,8 +105,12 @@ impl<T> VermarineEngine<T>
 
         // Sync the top of the stack's state to godot
         let state_len = self.states.len();
-        let state = self.states.get_mut(state_len - 1).unwrap();
-        sync_state_to_godot::<T>(&mut self.resources, state);
+        if state_len > 0 {
+            let state = self.states.get_mut(state_len - 1).unwrap();
+            sync_state_to_godot::<T>(&mut self.resources, state);
+        } else {
+            godot_print!("Expected a state in the stack but one was not found");
+        }
     }
 
     pub fn _input(_owner: Node, _event: Option<InputEvent>) {
@@ -250,7 +254,6 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                     if let Some(node) = state.0.node_lookup.get_mut(&e) {
                         unsafe { node.free() };
                         state.0.node_lookup.remove(&e);
-                        godot_print!("Stopped syncing from entity: {:?} to node", e.index())
                     }
                 }
             },
@@ -266,7 +269,6 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                                         instance.set_name("Node".into());
                                         state.0.containernode.unwrap().add_child(Some(instance), true);
                                         state.0.node_lookup.insert(e, instance);
-                                        godot_print!("Started syncing from entity: {:?} to node", e.index());   
                                     }
                                 } else {
                                     godot_print!("Could not find scene listen from renderable component");
@@ -295,7 +297,7 @@ pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (Sta
                 // Position
                 let mut transform = unsafe { spatial.get_translation() };
                 transform.x = pos.x as f32;
-                transform.y = pos.y as f32;
+                transform.z = pos.y as f32;
                 unsafe { spatial.set_translation(transform) };
 
                 // Rotation
