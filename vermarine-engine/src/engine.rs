@@ -107,7 +107,7 @@ impl<T> VermarineEngine<T>
         let state_len = self.states.len();
         if state_len > 0 {
             let state = self.states.get_mut(state_len - 1).unwrap();
-            sync_state_to_godot::<T>(&mut self.resources, state);
+            sync_state::<T>(&mut self.resources, state);
         } else {
             godot_print!("Expected a state in the stack but one was not found");
         }
@@ -242,109 +242,191 @@ pub(crate) fn get_animator<T>(node: Node) -> Option<T>
     None
 }
 
-pub(crate) fn sync_state_to_godot<T>(resources: &mut Resources, state: &mut (StateData, Box<(dyn State)>)) 
-    where 
+pub(crate) fn sync_state<T>(resources: &mut Resources, state: &mut (StateData, Box<(dyn State)>)) 
+    where
     T: Eq + std::hash::Hash + 'static {
-    // Add and remove entities from hashmap
-    for event in state.0.receiver.try_iter() {
-        match event {
-            legion::event::Event::EntityRemoved(e, _) => { 
-                if let None = state.0.world.get_component::<GDSpatial>(e) {
-                    // Remove from hashmap
-                    if let Some(node) = state.0.node_lookup.get_mut(&e) {
-                        unsafe { node.free() };
-                        state.0.node_lookup.remove(&e);
-                    }
-                }
-            },
-            legion::event::Event::EntityInserted(e, _) => {
-                if let Some(_) = state.0.world.get_component::<GDSpatial>(e) {
-                    // Add to hashmap if not already in there
-                    if !state.0.node_lookup.contains_key(&e) {
-                        if let Some(renderable) = state.0.world.get_component::<Renderable>(e) {
-                            if let Some(models) = resources.get::<Models<T>>() {
-                                if let Some(packed_scene) = (*models).scene_from_index(renderable.index) {
-                                    unsafe {
-                                        let mut instance = packed_scene.instance(0).unwrap().cast::<Node>().unwrap();
-                                        instance.set_name("Node".into());
-                                        state.0.containernode.unwrap().add_child(Some(instance), true);
-                                        state.0.node_lookup.insert(e, instance);
-                                    }
-                                } else {
-                                    godot_print!("Could not find scene listen from renderable component");
-                                }
-                            } else {
-                                godot_print!("Could not access Models<T> resource");
-                            }
-                        } else {
-                            godot_print!("Could not find renderable component on unlinked GDSpatial");
-                        }
-                    } else {
-                        godot_print!("Found GDSpatial without Node");
-                    }
-                }
-            },
-            _ => (),
-        };
-    }
-    // Query on changed components to update node positions
-    let query = <(Read<Position>, Read<GDSpatial>)>::query()
-        .filter(changed::<Position>());
-    for (entity, (pos, _)) in query.iter_entities(&mut state.0.world) {
-        if let Some(node) = state.0.node_lookup.get_mut(&entity) {
-            // Calls to godot are inherently unsafe
-            if let Some(mut spatial) = unsafe { node.cast::<Spatial>() } {
-                // Position
-                let mut transform = unsafe { spatial.get_translation() };
-                transform.x = pos.x as f32;
-                transform.z = pos.y as f32;
-                unsafe { spatial.set_translation(transform) };
+    
+    let models = resources.get::<Models<T>>().unwrap();
 
-                // Rotation
-                let mut rotation = unsafe { spatial.get_rotation() };
-                rotation.y = pos.rotation.get();
-                unsafe { spatial.set_rotation(rotation) };
-            } else if let Some(mut node2d) = unsafe { node.cast::<Node2D>() } {
-                let mut position = unsafe { node2d.get_position() };
-                position.x = pos.x as f32;
-                position.y = pos.y as f32;
-                unsafe { node2d.set_position(position) };
-                unsafe { node2d.set_rotation(pos.rotation.get() as f64) };
+    // Sync renderable tree
+    let query = <Write<Renderable>>::query()
+        .filter(changed::<Renderable>());
+    for mut renderable in query.iter_mut(&mut state.0.world) {
+        sync_renderable_recursive(&mut state.0.containernode.unwrap(), &mut renderable, &models);
+    }
+
+    // Sync entity position to renderable tree root
+    let query = <(Read<Position>, Write<Renderable>)>::query()
+        .filter(changed::<Position>());
+    for (pos, mut renderable) in query.iter_mut(&mut state.0.world) {
+        sync_transform_to_node(&pos, renderable.container_node.unwrap());
+    }
+}
+
+pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut Renderable, models: &Models<T>) 
+    where
+    T: Eq + std::hash::Hash + 'static {
+    // Create container node
+    if let None = renderable.container_node {
+        unsafe {
+            let mut node = Node2D::new().cast::<Node>().unwrap();
+            node.set_name("Renderable".into());
+            parent.add_child(Some(node), true);
+            renderable.container_node = Some(node);
+        }
+    }
+    
+    // Create children container
+    if let None = renderable.children_node {
+        unsafe {
+            let mut node = Node2D::new().cast::<Node>().unwrap();
+            node.set_name("Children".into());
+            renderable.container_node.unwrap().add_child(Some(node), true);
+            renderable.children_node = Some(node);
+        }
+    }
+
+    // Instance node
+    if renderable.renderable_node.is_none() && 
+        renderable.renderable_id.is_some() && 
+        renderable.template.is_some() {
+        unsafe {
+            let scene = models.scene_from_index(renderable.renderable_id.unwrap()).unwrap();
+            let mut instance = scene.instance(0).unwrap().cast::<Node>().unwrap();
+            instance.set_name("Node".into());
+            renderable.container_node.unwrap().add_child(Some(instance), true);
+            renderable.renderable_node = Some(instance);
+            if let Some(_) = renderable.spatial {
+                renderable.spatial = Some(GDSpatial { prev_id: Some(renderable.renderable_id.unwrap()) });
             }
         }
     }
 
-    // Update animation
-    let query = <(Read<GDSpatial>, Read<Renderable>)>::query();
-    for (entity, (_, renderable)) in query.iter_entities(&mut state.0.world) {
-        if let Some(node) = state.0.node_lookup.get_mut(&entity) {
-            if let Some(node) = unsafe { node.cast::<Node>() } {
-                match renderable.template {
-                    Template::ASprite(state) => {
-                        if let Some(mut sprite) = get_animator::<AnimatedSprite>(node) {
-                            // Update node from state
-                            unsafe {
-                                sprite._set_playing(state.playing);
-                                let gd_string = GodotString::from(state.animation);
-                                sprite.play(gd_string, false);
-                                sprite.set_flip_h(state.flip_h);
-                                sprite.set_flip_v(state.flip_v);
-                            }
-                        }
-                    },
-                    Template::APlayer(_state) => {
-                        if let Some(_sprite) = get_animator::<AnimationTree>(node) {
-                            // Update node from state
-                        }
-                    },
-                    Template::ATree(_state) => {
-                        if let Some(_sprite) = get_animator::<AnimationTree>(node) {
-                            // Update node from state
-                        }
-                    },
-                    _ => {}
-                }
+    // Swap instanced node if spatial is out of date
+    if renderable.spatial.is_some() && 
+        renderable.renderable_id.is_some() && 
+        renderable.template.is_some() {
+        if renderable.spatial.unwrap().is_dirty(&renderable) {
+            unsafe { 
+                renderable.renderable_node.unwrap().free();
+                let scene = models.scene_from_index(renderable.renderable_id.unwrap()).unwrap();
+                let mut instance = scene.instance(0).unwrap().cast::<Node>().unwrap();
+                instance.set_name("Node".into());
+                renderable.container_node.unwrap().add_child(Some(instance), true);
+                renderable.renderable_node = Some(instance);
+                renderable.spatial = Some(GDSpatial { prev_id: Some(renderable.renderable_id.unwrap()) });
             }
+        }
+    }
+
+    // Update visibility
+    if let Some(_) = renderable.spatial {
+        set_visible(renderable.container_node.unwrap(), true);
+    } else {
+        set_visible(renderable.container_node.unwrap(), false);
+        return;
+    }
+
+    // If our current renderable actually has stuff to render
+    if let Some(node) = renderable.renderable_node {
+
+        // Sync position to childrens parent node and to renderable node
+        sync_transform_to_node(&renderable.transform, node);
+        if let Some(node) = renderable.children_node {
+            sync_transform_to_node(&renderable.transform, node);
+        }
+
+        // Animations
+        match renderable.template.unwrap() {
+            Template::ASprite(state) => {
+                if let Some(mut sprite) = get_animator::<AnimatedSprite>(node) {
+                    // Update node from state
+                    unsafe {
+                        sprite._set_playing(state.playing);
+                        let gd_string = GodotString::from(state.animation);
+                        sprite.play(gd_string, false);
+                        sprite.set_flip_h(state.flip_h);
+                        sprite.set_flip_v(state.flip_v);
+                    }
+                }
+            },
+            Template::APlayer(_state) => {
+                if let Some(_sprite) = get_animator::<AnimationTree>(node) {
+                    // Update node from state
+                }
+            },
+            Template::ATree(_state) => {
+                if let Some(_sprite) = get_animator::<AnimationTree>(node) {
+                    // Update node from state
+                }
+            },
+            _ => {}
+        }
+    }
+
+    // Delete orphans
+    while let Some(orphan) = renderable.orphans.pop() {
+        if let Some(orphan) = orphan {
+            unsafe { orphan.free(); }
+        }
+    }
+
+    // Call recursively on children
+    for child in renderable.children.iter_mut() {
+        sync_renderable_recursive(&mut renderable.children_node.unwrap(), child, models)
+    }
+}
+
+pub(crate) fn sync_transform_to_node(pos: &Position, node: Node) {
+    if let Some(mut spatial) = unsafe { node.cast::<Spatial>() } {
+        // Position
+        let mut transform = unsafe { spatial.get_translation() };
+        transform.x = pos.x as f32;
+        transform.z = pos.y as f32;
+        unsafe { spatial.set_translation(transform) };
+
+        // Rotation
+        let mut rotation = unsafe { spatial.get_rotation() };
+        rotation.y = pos.rotation.get();
+        unsafe { spatial.set_rotation(rotation) };
+    } else if let Some(mut node2d) = unsafe { node.cast::<Node2D>() } {
+        let mut position = unsafe { node2d.get_position() };
+        position.x = pos.x as f32;
+        position.y = pos.y as f32;
+        unsafe { node2d.set_position(position) };
+        unsafe { node2d.set_rotation(pos.rotation.get() as f64) };
+    }
+}
+
+/// # Panics
+/// This method can panic if the node passed in is not a Node2D or a Spatial
+pub(crate) fn get_visible(node: Node) -> bool {
+    unsafe { 
+        if let Some(node2d) = node.cast::<Node2D>() {
+            return node2d.is_visible();
+        }
+        else if let Some(spatial) = node.cast::<Spatial>() {
+            return spatial.is_visible();
+        }
+        else {
+            panic!("Invalid node type passed in");
+        }
+    }
+}
+
+/// # Panics
+/// This method can panic if the node passed in is not a Node2D or a Spatial
+pub(crate) fn set_visible(node: Node, visible: bool) {
+    unsafe {
+        if let Some(mut node2d) = node.cast::<Node2D>() {
+            node2d.set_visible(visible);
+        } 
+        else if let Some(mut spatial) = node.cast::<Spatial>() {
+            spatial.set_visible(visible);
+            return;
+        } 
+        else {
+            panic!("Invalid node type passed in");
         }
     }
 }

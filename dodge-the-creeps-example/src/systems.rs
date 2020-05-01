@@ -46,7 +46,7 @@ pub(crate) fn input_system() -> Box<dyn Schedulable> {
             }
 
             for (_, vel, mut renderable) in queries.1.iter_mut(&mut *world) {
-                if let Template::ASprite(mut a_sprite) = renderable.template {
+                if let Some(Template::ASprite(mut a_sprite)) = renderable.template {
                     a_sprite.playing = true;
                     if vel.x != 0f32 {
                         a_sprite.animation = "right";
@@ -58,7 +58,7 @@ pub(crate) fn input_system() -> Box<dyn Schedulable> {
                     } else {
                         a_sprite.playing = false;
                     }
-                    renderable.template = Template::ASprite(a_sprite)
+                    renderable.template = Some(Template::ASprite(a_sprite))
                 }
             }
         })
@@ -133,8 +133,7 @@ pub(crate) fn spawn_enemy_system() -> Box<dyn Schedulable> {
                         
                         return (
                         EnemyComp { },
-                        Renderable { index: enemy.1, template: enemy.0 }, 
-                        GDSpatial, 
+                        Renderable::new(Position::default(), enemy.1, enemy.0),
                         position, 
                         Velocity { x: (rand.gen::<f32>() * 1.7f32) + 2.5f32, y: 0f32 },
                         Collider { width: 12.0, height: 12.0, offset_x: 14.0, offset_y: 0.0 },

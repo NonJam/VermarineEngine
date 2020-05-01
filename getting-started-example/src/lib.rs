@@ -67,8 +67,7 @@ impl State for YourState {
             (),
             (0..1).map(|_| (
                 // What components we want our entity to have
-                GDSpatial,
-                Renderable { index: square.1, template: square.0 },
+                Renderable::new(Position::default(), square.1, square.0),
                 Position::new(150f32, 150f32),
             ))
         );
@@ -100,9 +99,7 @@ impl State for PauseState {
             (),
             (0..1).map(|_| (
                 // What components we want our entity to have
-                GDSpatial,
-                Renderable { index: pause.1, template: pause.0 },
-                Position::new(0f32, 0f32),
+                Renderable::new(Position::default(), pause.1, pause.0),
             ))
         );
     }

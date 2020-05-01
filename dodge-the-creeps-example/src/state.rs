@@ -13,9 +13,8 @@ impl State for MainState {
         data.world.insert(
             (), 
             (0..1).map(|_| (
-                Renderable { index: player.1, template: player.0 }, 
-                GDSpatial, 
-                Position { x: 240f32, y: 450f32, rotation: euclid::Angle::radians(0f32) }, 
+                Renderable::new(Position::default(), player.1, player.0),
+                Position::new(240f32, 450f32), 
                 TakesInput { speed: 400f32 / 60f32 }, 
                 Velocity::default(),
                 Collider { width: 25.0, height: 25.0, offset_x: 0.0, offset_y: -2.5},
