@@ -226,8 +226,7 @@
 //!         (),
 //!         (0..1).map(|_| (
 //!             // What components we want our entity to have
-//!             GDSpatial,
-//!             Renderable { index: square.1, template: square.0 },
+//!             Renderable::new(Position::default(), square.1, square.0),
 //!             Position::new(150f32, 150f32),
 //!         ))
 //!     );
@@ -235,12 +234,11 @@
 //! ```
 //! All three of the components we just added are from VermarineEngine so make sure you have a use statement somewhere ```use vermarine_engine::prelude::*;```
 //! 
-//! GDSpatial is a component that marks our entity as one that needs to be instanced in godot aswell. This component won't do anything if you don't have a Renderable
-//! component on the entity aswell.
+//! Renderables: this component stores a tree like structure of renderables from the Models\<T> resource along with positions to render each renderable at. 
+//! The positions specified are relative to the parent's position. In the case of the root level renderable its position is relative to the Position component attached to the entity.
 //! 
-//! Renderable is a component that stores the usize key into Models\<T> along with the Template.
-//! 
-//! Position is fairly self explanatory but nevertheless, position stores the position of our entity and is what is used by the engine to set the position of GDSpatials
+//! Position is fairly self explanatory but nevertheless, position stores the position of our entity and is what is used by the engine to determine the position of an entity.
+//! This component is unnecessary for drawing to the screen as if it's not found the renderables assume the entity is at 0,0.
 //! 
 //! 8...  That's us done! If you play the game you'll see your square.tscn at whatever position specified in the Position component
 //! 
@@ -301,7 +299,7 @@
 //! ```
 //! 
 //! 7. In on_push we want to create an entity with the renderable set to our pause scene. This is pretty quickly done by copy pasting our on_push method from
-//! YourState and then making some small tweaks (changes annotated):
+//! YourState and then making some small tweaks:
 //! ```
 //! // Retrieve our data from Models\<T>
 //! let models = resources.get::<Models<i32>>().unwrap();
@@ -313,11 +311,7 @@
 //!     (),
 //!     (0..1).map(|_| (
 //!         // What components we want our entity to have
-//!         GDSpatial,
-//!         // Changed to use the pause variable not square variable
-//!         Renderable { index: pause.1, template: pause.0 },
-//!         // Set position to 0,0 not 150,150
-//!         Position::new(0f32, 0f32),
+//!         Renderable::new(Position::default(), pause.1, pause.0),
 //!     ))
 //! );
 //! ```
