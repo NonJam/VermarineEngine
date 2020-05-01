@@ -261,9 +261,30 @@ pub(crate) fn sync_state<T>(resources: &mut Resources, state: &mut (StateData, B
     for (pos, mut renderable) in query.iter_mut(&mut state.0.world) {
         sync_transform_to_node(&pos, renderable.container_node.unwrap());
     }
+
+    // Free godot nodes whos respective entities have been disposed
+    for event in state.0.receiver.try_iter() {
+        use legion::event::Event::*;
+        match event {
+            EntityRemoved(e, _) => {
+                if let None = state.0.world.get_component::<Renderable>(e) {
+                    if let Some(node) = state.0.node_lookup.get_mut(&e) {
+                        unsafe { node.free(); }
+                        state.0.node_lookup.remove(&e);
+                    }
+                }
+            },
+            EntityInserted(e, _) => {
+                if let (Some(renderable), Some(_)) = (state.0.world.get_component::<Renderable>(e), state.0.world.get_component::<Position>(e)) {
+                    state.0.node_lookup.insert(e, renderable.container_node.unwrap());
+                } 
+            }
+            _ => { }
+        }
+    }
 }
 
-pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut Renderable, models: &Models<T>) 
+pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut Renderable, models: &Models<T>)
     where
     T: Eq + std::hash::Hash + 'static {
     // Create container node
@@ -286,7 +307,7 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
         }
     }
 
-    // Instance node
+    // Instance node 
     if renderable.renderable_node.is_none() && 
         renderable.renderable_id.is_some() && 
         renderable.template.is_some() {
@@ -297,7 +318,7 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
             renderable.container_node.unwrap().add_child(Some(instance), true);
             renderable.renderable_node = Some(instance);
             if let Some(_) = renderable.spatial {
-                renderable.spatial = Some(GDSpatial { prev_id: Some(renderable.renderable_id.unwrap()) });
+                renderable.spatial = Some(GDSpatial { prev_id: renderable.renderable_id });
             }
         }
     }
@@ -305,7 +326,8 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
     // Swap instanced node if spatial is out of date
     if renderable.spatial.is_some() && 
         renderable.renderable_id.is_some() && 
-        renderable.template.is_some() {
+        renderable.template.is_some() &&
+        renderable.renderable_node.is_some() {
         if renderable.spatial.unwrap().is_dirty(&renderable) {
             unsafe { 
                 renderable.renderable_node.unwrap().free();
@@ -314,7 +336,7 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
                 instance.set_name("Node".into());
                 renderable.container_node.unwrap().add_child(Some(instance), true);
                 renderable.renderable_node = Some(instance);
-                renderable.spatial = Some(GDSpatial { prev_id: Some(renderable.renderable_id.unwrap()) });
+                renderable.spatial = Some(GDSpatial { prev_id: renderable.renderable_id });
             }
         }
     }
