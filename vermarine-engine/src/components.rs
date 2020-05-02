@@ -33,7 +33,6 @@ pub enum RenderableCommand {
     Delete(Option<Node>),
 }
 
-//#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Renderable {
     pub spatial: Option<GDSpatial>,
     pub transform: Position,
@@ -43,6 +42,9 @@ pub struct Renderable {
 
     pub(crate) container_node: Option<Node>,
     pub(crate) children_node: Option<Node>,
+
+    pub(crate) children_containers: Vec<Node>,
+
     pub(crate) renderable_node: Option<Node>,
 
     pub(crate) children: Vec<Renderable>,
@@ -63,6 +65,7 @@ impl Default for Renderable {
 
             container_node: None,
             children_node: None,
+            children_containers: vec![],
             renderable_node: None,
 
             children: vec![],
@@ -132,19 +135,32 @@ impl Renderable {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GDSpatial {
     pub(crate) prev_id: Option<usize>,
+    pub(crate) prev_pos: Option<Position>,
 }
 
 impl GDSpatial {
     pub fn new() -> Self {
         GDSpatial {
             prev_id: None,
+            prev_pos: None,
         }
     }
 
-    pub(crate) fn is_dirty(&self, renderable: &Renderable) -> bool {
+    pub(crate) fn is_id_dirty(&self, renderable: &Renderable) -> bool {
         if let Some(prev_id) = self.prev_id {
             if prev_id != renderable.renderable_id.unwrap() {
                 return true;
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    pub(crate) fn is_pos_dirty(&self, renderable: &Renderable) -> bool {
+        if let Some(prev_pos) = self.prev_pos {
+            if prev_pos != renderable.transform {
+                return true
             }
             return false;
         } else {

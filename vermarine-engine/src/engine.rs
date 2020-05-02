@@ -275,8 +275,10 @@ pub(crate) fn sync_state<T>(resources: &mut Resources, state: &mut (StateData, B
                 }
             },
             EntityInserted(e, _) => {
-                if let (Some(renderable), Some(_)) = (state.0.world.get_component::<Renderable>(e), state.0.world.get_component::<Position>(e)) {
-                    state.0.node_lookup.insert(e, renderable.container_node.unwrap());
+                if let Some(renderable) = state.0.world.get_component::<Renderable>(e) {
+                    if let Some(_) = state.0.world.get_component::<Position>(e) {
+                        state.0.node_lookup.insert(e, renderable.container_node.unwrap());
+                    }
                 } 
             }
             _ => { }
@@ -307,10 +309,18 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
         }
     }
 
+    // Free renderable node if dirty
+    if let (Some(spatial), Some(node)) = (renderable.spatial, renderable.renderable_node) {
+        if spatial.is_id_dirty(&renderable) {
+            unsafe { node.free(); }
+        }
+    }
+
     // Instance node 
     if renderable.renderable_node.is_none() && 
         renderable.renderable_id.is_some() && 
-        renderable.template.is_some() {
+        renderable.template.is_some() 
+    {
         unsafe {
             let scene = models.scene_from_index(renderable.renderable_id.unwrap()).unwrap();
             let mut instance = scene.instance(0).unwrap().cast::<Node>().unwrap();
@@ -318,44 +328,30 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
             renderable.container_node.unwrap().add_child(Some(instance), true);
             renderable.renderable_node = Some(instance);
             if let Some(_) = renderable.spatial {
-                renderable.spatial = Some(GDSpatial { prev_id: renderable.renderable_id });
-            }
-        }
-    }
-
-    // Swap instanced node if spatial is out of date
-    if renderable.spatial.is_some() && 
-        renderable.renderable_id.is_some() && 
-        renderable.template.is_some() &&
-        renderable.renderable_node.is_some() {
-        if renderable.spatial.unwrap().is_dirty(&renderable) {
-            unsafe { 
-                renderable.renderable_node.unwrap().free();
-                let scene = models.scene_from_index(renderable.renderable_id.unwrap()).unwrap();
-                let mut instance = scene.instance(0).unwrap().cast::<Node>().unwrap();
-                instance.set_name("Node".into());
-                renderable.container_node.unwrap().add_child(Some(instance), true);
-                renderable.renderable_node = Some(instance);
-                renderable.spatial = Some(GDSpatial { prev_id: renderable.renderable_id });
+                renderable.spatial = Some(GDSpatial { prev_id: renderable.renderable_id, prev_pos: None });
             }
         }
     }
 
     // Update visibility
-    if let Some(_) = renderable.spatial {
-        set_visible(renderable.container_node.unwrap(), true);
-    } else {
-        set_visible(renderable.container_node.unwrap(), false);
-        return;
+    unsafe {
+        if let Some(_) = renderable.spatial {
+            renderable.container_node.unwrap().cast::<Node2D>().unwrap().set_visible(true);
+        } else {
+            renderable.container_node.unwrap().cast::<Node2D>().unwrap().set_visible(false);
+            return;
+        }
     }
 
     // If our current renderable actually has stuff to render
     if let Some(node) = renderable.renderable_node {
-
         // Sync position to childrens parent node and to renderable node
-        sync_transform_to_node(&renderable.transform, node);
-        if let Some(node) = renderable.children_node {
+        if renderable.spatial.unwrap().is_pos_dirty(&renderable) {
             sync_transform_to_node(&renderable.transform, node);
+            if let Some(node) = renderable.children_node {
+                sync_transform_to_node2d(&renderable.transform, unsafe{node.cast::<Node2D>().unwrap()});
+            }
+            renderable.spatial = Some(GDSpatial { prev_id: renderable.renderable_id, prev_pos: Some(renderable.transform)});
         }
 
         // Animations
@@ -395,64 +391,65 @@ pub(crate) fn sync_renderable_recursive<T>(parent: &mut Node, renderable: &mut R
 
     // Call recursively on children
     for child in renderable.children.iter_mut() {
-        sync_renderable_recursive(&mut renderable.children_node.unwrap(), child, models)
+        let mut res = None;
+        if child.container_node.is_none() {
+            // Try find a parent node
+            for node in renderable.children_containers.iter() {
+                unsafe { 
+                    if node.get_child_count() < 500 {
+                        res = Some(*node);
+                        break;
+                    }
+                }
+            }
+    
+            // Make parent node if we couldnt find one
+            if let None = res {
+                unsafe {
+                    res = Some(Node2D::new().cast::<Node>().unwrap());
+                    res.unwrap().set_name("NodeBatch".into());
+                    renderable.children_node.unwrap().add_child(res, true);
+                }
+                renderable.children_containers.push(res.unwrap());
+            }
+        } else {
+            unsafe {
+                res = Some(child.container_node.unwrap().get_parent().unwrap());
+            }
+        }
+
+        //sync_renderable_recursive(&mut renderable.children_node.unwrap(), child, models)
+        sync_renderable_recursive(&mut res.unwrap(), child, models);
     }
 }
 
 pub(crate) fn sync_transform_to_node(pos: &Position, node: Node) {
-    if let Some(mut spatial) = unsafe { node.cast::<Spatial>() } {
-        // Position
-        let mut transform = unsafe { spatial.get_translation() };
-        transform.x = pos.x as f32;
-        transform.z = pos.y as f32;
-        unsafe { spatial.set_translation(transform) };
-
-        // Rotation
-        let mut rotation = unsafe { spatial.get_rotation() };
-        rotation.y = pos.rotation.get();
-        unsafe { spatial.set_rotation(rotation) };
-    } else if let Some(mut node2d) = unsafe { node.cast::<Node2D>() } {
-        let mut position = unsafe { node2d.get_position() };
-        position.x = pos.x as f32;
-        position.y = pos.y as f32;
-        unsafe { node2d.set_position(position) };
-        unsafe { node2d.set_rotation(pos.rotation.get() as f64) };
+    if let Some(spatial) = unsafe { node.cast::<Spatial>() } {
+        sync_transform_to_spatial(pos, spatial);
+    } else if let Some(node2d) = unsafe { node.cast::<Node2D>() } {
+        sync_transform_to_node2d(pos, node2d);
     }
 }
 
-/// # Panics
-/// This method can panic if the node passed in is not a Node2D or a Spatial
-pub(crate) fn get_visible(node: Node) -> bool {
-    unsafe { 
-        if let Some(node2d) = node.cast::<Node2D>() {
-            return node2d.is_visible();
-        }
-        else if let Some(spatial) = node.cast::<Spatial>() {
-            return spatial.is_visible();
-        }
-        else {
-            panic!("Invalid node type passed in");
-        }
-    }
+pub(crate) fn sync_transform_to_spatial(pos: &Position, mut spatial: Spatial) {
+    // Position
+    let mut transform = unsafe { spatial.get_translation() };
+    transform.x = pos.x as f32;
+    transform.z = pos.y as f32;
+    unsafe { spatial.set_translation(transform) };
+
+    // Rotation
+    let mut rotation = unsafe { spatial.get_rotation() };
+    rotation.y = pos.rotation.get();
 }
 
-/// # Panics
-/// This method can panic if the node passed in is not a Node2D or a Spatial
-pub(crate) fn set_visible(node: Node, visible: bool) {
-    unsafe {
-        if let Some(mut node2d) = node.cast::<Node2D>() {
-            node2d.set_visible(visible);
-        } 
-        else if let Some(mut spatial) = node.cast::<Spatial>() {
-            spatial.set_visible(visible);
-            return;
-        } 
-        else {
-            panic!("Invalid node type passed in");
-        }
-    }
+pub(crate) fn sync_transform_to_node2d(pos: &Position, mut node2d: Node2D) {
+    let mut position = unsafe { node2d.get_position() };
+    position.x = pos.x as f32;
+    position.y = pos.y as f32;
+    unsafe { node2d.set_position(position) };
+    unsafe { node2d.set_rotation(pos.rotation.get() as f64) };
 }
-
 /// Takes a path to a scene prepends res://scenes/ and appends .tscn then attempts to load the scene
 /// 
 /// this path is CAPS SENSITIVE it is EXTREMELY important that your scenes folder is ALL lowercase and your specified path is correctly cased or else it WILL NOT WORK ON LINUX
